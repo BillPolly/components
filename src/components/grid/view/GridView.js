@@ -68,23 +68,7 @@ export class GridView {
     this.headerElement.innerHTML = '';
     const headerRow = document.createElement('tr');
     
-    // Add drag handle column if row dragging enabled
-    if (this.config.rowDragging?.enabled) {
-      const dragColumn = document.createElement('th');
-      dragColumn.className = 'drag-column-header';
-      dragColumn.style.cssText = `
-        width: 40px;
-        padding: 12px 8px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        text-align: center;
-        font-weight: 600;
-        user-select: none;
-        color: #6b7280;
-      `;
-      dragColumn.innerHTML = '⋮⋮';
-      headerRow.appendChild(dragColumn);
-    }
+    // Remove drag handle column since entire rows are now draggable
     
     // Add selection column if selectable
     if (this.config.selectable && this.config.selectable !== 'none') {
@@ -203,45 +187,49 @@ export class GridView {
       tr.setAttribute('data-row-index', rowIndex);
       
       const isSelected = this.isRowSelected ? this.isRowSelected(rowIndex) : false;
+      
+      // Make entire row draggable if row dragging is enabled
+      if (this.config.rowDragging?.enabled) {
+        tr.setAttribute('draggable', 'true');
+        tr.style.cursor = 'grab';
+      }
+      
       tr.style.cssText = `
         border: 1px solid #e2e8f0;
         background: ${isSelected ? '#eff6ff' : (rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc')};
-        transition: background-color 0.15s ease;
+        transition: all 0.2s ease;
+        transform: translate3d(0, 0, 0);
+        ${this.config.rowDragging?.enabled ? 'cursor: grab;' : ''}
       `;
       
-      // Hover effect
+      // Enhanced hover effect with smooth transitions
       tr.addEventListener('mouseenter', () => {
-        if (!isSelected) {
+        if (!isSelected && !tr.classList.contains('dragging')) {
           tr.style.background = '#f1f5f9';
+          if (this.config.rowDragging?.enabled) {
+            tr.style.transform = 'translate3d(0, -1px, 0)';
+            tr.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+          }
         }
       });
       
       tr.addEventListener('mouseleave', () => {
-        tr.style.background = isSelected ? '#eff6ff' : (rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc');
+        if (!tr.classList.contains('dragging')) {
+          tr.style.background = isSelected ? '#eff6ff' : (rowIndex % 2 === 0 ? '#ffffff' : '#f8fafc');
+          tr.style.transform = 'translate3d(0, 0, 0)';
+          tr.style.boxShadow = 'none';
+        }
       });
       
-      // Add drag handle cell
+      // Add drag start visual feedback
       if (this.config.rowDragging?.enabled) {
-        const dragCell = document.createElement('td');
-        dragCell.className = 'drag-handle-cell';
-        dragCell.style.cssText = `
-          width: 40px;
-          padding: 8px;
-          text-align: center;
-          cursor: grab;
-          color: #9ca3af;
-          border: 1px solid #e2e8f0;
-          user-select: none;
-        `;
+        tr.addEventListener('dragstart', () => {
+          tr.style.cursor = 'grabbing';
+        });
         
-        const dragHandle = document.createElement('div');
-        dragHandle.className = 'drag-handle';
-        dragHandle.innerHTML = '⋮⋮';
-        dragHandle.setAttribute('draggable', 'true');
-        dragHandle.style.cssText = 'cursor: grab; font-size: 16px;';
-        
-        dragCell.appendChild(dragHandle);
-        tr.appendChild(dragCell);
+        tr.addEventListener('dragend', () => {
+          tr.style.cursor = 'grab';
+        });
       }
       
       // Add selection cell
@@ -522,36 +510,120 @@ export class GridView {
     });
   }
   
-  // Drag & Drop visual feedback
+  // Drag & Drop visual feedback with smooth animations
   showRowDragFeedback(rowIndex) {
     const row = this.element.querySelector(`tr[data-row-index="${rowIndex}"]`);
     if (row) {
-      row.style.opacity = '0.5';
       row.classList.add('dragging');
+      row.style.cssText += `
+        opacity: 0.7;
+        transform: translate3d(0, 0, 0) scale(1.02);
+        z-index: 1000;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        cursor: grabbing !important;
+        background: #ffffff !important;
+        border: 2px solid #3b82f6;
+      `;
+      
+      // Create ghost placeholder
+      this.createGhostPlaceholder(row, rowIndex);
     }
+  }
+  
+  createGhostPlaceholder(originalRow, rowIndex) {
+    // Remove existing ghost
+    const existingGhost = this.element.querySelector('.ghost-placeholder');
+    if (existingGhost) {
+      existingGhost.remove();
+    }
+    
+    const ghost = originalRow.cloneNode(true);
+    ghost.className = 'ghost-placeholder';
+    ghost.style.cssText = `
+      opacity: 0.3;
+      background: #f8fafc !important;
+      border: 2px dashed #cbd5e1;
+      position: relative;
+      pointer-events: none;
+    `;
+    
+    // Insert ghost after original row
+    originalRow.parentNode.insertBefore(ghost, originalRow.nextSibling);
   }
   
   hideRowDragFeedback() {
     const draggingRows = this.element.querySelectorAll('.dragging');
     draggingRows.forEach(row => {
-      row.style.opacity = '1';
       row.classList.remove('dragging');
+      row.style.cssText = row.style.cssText.replace(/opacity:[^;]*;?/g, '')
+                                           .replace(/transform:[^;]*;?/g, '')
+                                           .replace(/z-index:[^;]*;?/g, '')
+                                           .replace(/box-shadow:[^;]*;?/g, '')
+                                           .replace(/cursor:[^;]*;?/g, '')
+                                           .replace(/border:[^;]*;?/g, '');
     });
     
-    // Clear drop zones
-    const dropZones = this.element.querySelectorAll('.drop-zone');
-    dropZones.forEach(zone => {
-      zone.style.borderTop = '1px solid #e2e8f0';
-      zone.classList.remove('drop-zone');
-    });
+    // Remove ghost placeholder
+    const ghost = this.element.querySelector('.ghost-placeholder');
+    if (ghost) {
+      ghost.remove();
+    }
+    
+    // Clear drop zones and indicators
+    this.clearDropIndicators();
   }
   
   showRowDropZone(targetIndex) {
+    // Clear previous drop indicators
+    this.clearDropIndicators();
+    
     const targetRow = this.element.querySelector(`tr[data-row-index="${targetIndex}"]`);
-    if (targetRow) {
-      targetRow.style.borderTop = '3px solid #3b82f6';
-      targetRow.classList.add('drop-zone');
+    if (targetRow && !targetRow.classList.contains('dragging')) {
+      // Create drop indicator line
+      const indicator = document.createElement('div');
+      indicator.className = 'drop-indicator';
+      indicator.style.cssText = `
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: #3b82f6;
+        border-radius: 2px;
+        box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+        z-index: 999;
+        animation: pulse 1s infinite;
+        transform: translateY(-1px);
+      `;
+      
+      // Position indicator above target row
+      targetRow.style.position = 'relative';
+      targetRow.insertBefore(indicator, targetRow.firstChild);
+      targetRow.classList.add('drop-target');
+      
+      // Add pulse animation if not already defined
+      if (!document.querySelector('#drop-indicator-styles')) {
+        const style = document.createElement('style');
+        style.id = 'drop-indicator-styles';
+        style.textContent = `
+          @keyframes pulse {
+            0%, 100% { opacity: 1; transform: translateY(-1px) scaleY(1); }
+            50% { opacity: 0.7; transform: translateY(-1px) scaleY(1.2); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
     }
+  }
+  
+  clearDropIndicators() {
+    const indicators = this.element.querySelectorAll('.drop-indicator');
+    indicators.forEach(indicator => indicator.remove());
+    
+    const dropTargets = this.element.querySelectorAll('.drop-target');
+    dropTargets.forEach(target => {
+      target.classList.remove('drop-target');
+      target.style.position = '';
+    });
   }
   
   showColumnDragFeedback(columnIndex) {
@@ -586,7 +658,12 @@ export class GridView {
   
   // Complete re-render
   updateRowOrder(newData) {
+    // Temporarily use a simpler approach - re-render the rows
+    // This will lose event listeners but should work for testing
+    console.log('🔄 Updating row order with data:', newData);
+    this.currentData = newData;
     this.renderTableRows(newData, this.currentColumns);
+    console.log('✅ Row order updated');
   }
   
   updateColumnOrder(newColumns) {

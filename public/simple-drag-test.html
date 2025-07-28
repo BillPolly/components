@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Drag Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            border: 2px solid #ccc;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        .draggable-row {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: grab;
+            transition: all 0.2s ease;
+        }
+        .draggable-row:hover {
+            background: #f0f0f0;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .dragging {
+            opacity: 0.7;
+            transform: scale(1.05);
+            z-index: 1000;
+        }
+        .drop-indicator {
+            height: 3px;
+            background: #3b82f6;
+            margin: 2px 0;
+            border-radius: 2px;
+        }
+        .log {
+            background: #000;
+            color: #00ff00;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 20px;
+            height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Drag and Drop Test</h1>
+    <div class="container" id="container">
+        <div class="draggable-row" draggable="true" data-index="0">Row 1: Alice Johnson</div>
+        <div class="draggable-row" draggable="true" data-index="1">Row 2: Bob Smith</div>
+        <div class="draggable-row" draggable="true" data-index="2">Row 3: Carol Davis</div>
+        <div class="draggable-row" draggable="true" data-index="3">Row 4: David Wilson</div>
+        <div class="draggable-row" draggable="true" data-index="4">Row 5: Eva Brown</div>
+    </div>
+    <div class="log" id="log"></div>
+
+    <script>
+        const container = document.getElementById('container');
+        const log = document.getElementById('log');
+        let draggedElement = null;
+        let draggedIndex = null;
+
+        function logMessage(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+            console.log(message);
+        }
+
+        // Add event listeners
+        container.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('draggable-row')) {
+                draggedElement = e.target;
+                draggedIndex = parseInt(e.target.getAttribute('data-index'));
+                e.target.classList.add('dragging');
+                
+                logMessage(`🚀 Drag started: ${e.target.textContent} (index: ${draggedIndex})`);
+                
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', draggedIndex.toString());
+            }
+        });
+
+        container.addEventListener('dragover', (e) => {
+            if (draggedElement) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                
+                const target = e.target.closest('.draggable-row');
+                if (target && target !== draggedElement) {
+                    const targetIndex = parseInt(target.getAttribute('data-index'));
+                    logMessage(`👆 Drag over: ${target.textContent} (index: ${targetIndex})`);
+                }
+            }
+        });
+
+        container.addEventListener('drop', (e) => {
+            if (draggedElement) {
+                e.preventDefault();
+                
+                const target = e.target.closest('.draggable-row');
+                if (target && target !== draggedElement) {
+                    const targetIndex = parseInt(target.getAttribute('data-index'));
+                    
+                    logMessage(`💧 Drop: Moving index ${draggedIndex} to ${targetIndex}`);
+                    
+                    // Simple reordering - insert dragged element before target
+                    if (draggedIndex < targetIndex) {
+                        target.parentNode.insertBefore(draggedElement, target.nextSibling);
+                    } else {
+                        target.parentNode.insertBefore(draggedElement, target);
+                    }
+                    
+                    // Update indices
+                    const rows = container.querySelectorAll('.draggable-row');
+                    rows.forEach((row, index) => {
+                        row.setAttribute('data-index', index);
+                    });
+                    
+                    logMessage(`✅ Drop completed successfully!`);
+                } else {
+                    logMessage(`❌ Invalid drop target`);
+                }
+            }
+        });
+
+        container.addEventListener('dragend', (e) => {
+            if (e.target.classList.contains('draggable-row')) {
+                e.target.classList.remove('dragging');
+                logMessage(`🏁 Drag ended`);
+                draggedElement = null;
+                draggedIndex = null;
+            }
+        });
+
+        logMessage('✅ Simple drag test initialized. Try dragging rows!');
+    </script>
+</body>
+</html>

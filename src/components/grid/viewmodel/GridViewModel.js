@@ -340,16 +340,45 @@ export class GridViewModel {
   
   setupRowDragging() {
     this.view.addEventListener(this.view.element, 'dragstart', (e) => {
-      const dragHandle = e.target.closest('.drag-handle');
-      if (dragHandle) {
-        const row = dragHandle.closest('tr');
+      const row = e.target.closest('tr.grid-row');
+      if (row && row.hasAttribute('draggable')) {
         const rowIndex = parseInt(row.getAttribute('data-row-index'));
+        console.log('🚀 Drag start - Row:', rowIndex, 'Element:', row);
+        
+        // Prevent dragging if clicked on interactive elements
+        if (e.target.closest('input, button, .row-selector')) {
+          e.preventDefault();
+          return;
+        }
         
         this.model.startDrag('row', rowIndex);
         this.view.showRowDragFeedback(rowIndex);
         
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', row.outerHTML);
+        e.dataTransfer.setData('text/plain', rowIndex.toString());
+        
+        // Create custom drag image (ghost)
+        const dragImage = row.cloneNode(true);
+        dragImage.style.cssText = `
+          position: absolute;
+          top: -1000px;
+          left: -1000px;
+          width: ${row.offsetWidth}px;
+          opacity: 0.8;
+          transform: scale(0.95);
+          background: white;
+          border: 2px solid #3b82f6;
+          border-radius: 4px;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        `;
+        
+        document.body.appendChild(dragImage);
+        e.dataTransfer.setDragImage(dragImage, e.offsetX, e.offsetY);
+        
+        // Clean up drag image after drag starts
+        setTimeout(() => {
+          document.body.removeChild(dragImage);
+        }, 0);
         
         if (this.config.rowDragging.onDragStart) {
           this.config.rowDragging.onDragStart(rowIndex, this.model.getRow(rowIndex));
@@ -362,14 +391,19 @@ export class GridViewModel {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         
-        const row = e.target.closest('tr');
-        if (row) {
+        const row = e.target.closest('tr.grid-row');
+        if (row && !row.classList.contains('dragging')) {
           const targetIndex = parseInt(row.getAttribute('data-row-index'));
-          this.model.setDropTarget(targetIndex);
-          this.view.showRowDropZone(targetIndex);
+          console.log('👆 Drag over - Target:', targetIndex, 'Source:', this.model.dragIndex);
           
-          if (this.config.rowDragging.onDragOver) {
-            this.config.rowDragging.onDragOver(this.model.dragIndex, targetIndex);
+          // Only show drop zone if target is different from source
+          if (targetIndex !== this.model.dragIndex) {
+            this.model.setDropTarget(targetIndex);
+            this.view.showRowDropZone(targetIndex);
+            
+            if (this.config.rowDragging.onDragOver) {
+              this.config.rowDragging.onDragOver(this.model.dragIndex, targetIndex);
+            }
           }
         }
       }
@@ -378,21 +412,32 @@ export class GridViewModel {
     this.view.addEventListener(this.view.element, 'drop', (e) => {
       if (this.model.dragType === 'row') {
         e.preventDefault();
+        console.log('💧 Drop event triggered');
         
-        const row = e.target.closest('tr');
-        if (row) {
-          const targetIndex = parseInt(row.getAttribute('data-row-index'));
+        const targetRow = e.target.closest('tr.grid-row');
+        console.log('🎯 Target row found:', !!targetRow, targetRow);
+        
+        if (targetRow && !targetRow.classList.contains('dragging')) {
+          const targetIndex = parseInt(targetRow.getAttribute('data-row-index'));
           const sourceIndex = this.model.dragIndex;
+          console.log('✅ Drop - Source:', sourceIndex, 'Target:', targetIndex);
           
           if (sourceIndex !== null && sourceIndex !== targetIndex) {
+            console.log('🔄 Performing row move...');
+            
+            // Perform the move immediately
             const newData = this.model.moveRow(sourceIndex, targetIndex);
             this.view.updateRowOrder(newData);
             this.updateSelection();
+            
+            console.log('✅ Row move completed');
             
             if (this.config.rowDragging.onDrop) {
               this.config.rowDragging.onDrop(sourceIndex, targetIndex, newData);
             }
           }
+        } else {
+          console.log('❌ No valid drop target found');
         }
         
         this.view.hideRowDragFeedback();

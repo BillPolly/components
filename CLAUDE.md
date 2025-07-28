@@ -52,6 +52,8 @@ Components support three operational modes through the same `create()` function:
 - **ContextMenu** (`src/components/context-menu/`): Hierarchical popup menus with positioning
 - **Window** (`src/components/window/`): Draggable floating windows
 - **ImageViewer** (`src/components/image-viewer/`): Image display with pan/zoom controls
+- **Grid** (`src/components/grid/`): Interactive data grid with MVVM architecture, supports table/attribute modes
+- **Field Editors** (`src/components/field-editors/`): Reusable input components (TextField, NumericField, BooleanField)
 
 ### Utilities
 
@@ -109,6 +111,8 @@ The test suite (`test/integration.test.js`) demonstrates composition patterns:
 - Integration tests verify component composition and data flow
 - Use `UmbilicalUtils.createMockUmbilical()` for test umbilicals
 - Test environment is jsdom with Jest ES modules support
+- Field editors have comprehensive integration tests showing composition patterns
+- Grid component has detailed tests for MVVM architecture and mode switching
 
 ### File Organization
 ```
@@ -136,3 +140,5 @@ public/examples/        # Demo applications and interactive examples
 - The protocol is designed as "assembly language" for component systems
 - Server runs Express serving static files from `public/` directory
 - Jest configuration uses experimental VM modules for ES6 support
+- Complex components like Grid use internal MVVM patterns while maintaining umbilical protocol externally
+- Field editors demonstrate reusable input patterns that can be composed within larger components

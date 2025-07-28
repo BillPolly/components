@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Grid Drag and Drop</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .grid-container {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: white;
+        }
+        .debug-log {
+            background: #1a1a1a;
+            color: #00ff00;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .clear-button {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Debug Grid Drag and Drop</h1>
+        <button class="clear-button" onclick="clearLog()">Clear Log</button>
+        <div id="debug-log" class="debug-log">Debug log will appear here...</div>
+        <div id="grid-container" class="grid-container"></div>
+    </div>
+
+    <script type="module">
+        import { Grid } from '/src/components/grid/index.js';
+
+        const debugLog = document.getElementById('debug-log');
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            debugLog.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(message);
+        }
+
+        window.clearLog = () => {
+            debugLog.innerHTML = '';
+        };
+
+        // Test data
+        const testData = [
+            { id: 1, name: 'Alice Johnson', department: 'Engineering', active: true },
+            { id: 2, name: 'Bob Smith', department: 'Marketing', active: true },
+            { id: 3, name: 'Carol Davis', department: 'Sales', active: false },
+            { id: 4, name: 'David Wilson', department: 'Engineering', active: true },
+            { id: 5, name: 'Eva Brown', department: 'HR', active: true }
+        ];
+
+        const columns = [
+            { key: 'name', label: 'Name', type: 'text', width: '200px' },
+            { key: 'department', label: 'Department', type: 'text', width: '150px' },
+            { key: 'active', label: 'Active', type: 'boolean', width: '100px' }
+        ];
+
+        try {
+            log('Creating grid with debug drag and drop...');
+            
+            const grid = Grid.create({
+                data: testData,
+                columns: columns,
+                mode: 'table',
+                
+                // Enable row dragging with debugging
+                rowDragging: {
+                    enabled: true,
+                    onDragStart: (rowIndex, rowData) => {
+                        log(`🚀 DRAG START: Row ${rowIndex + 1} (${rowData.name})`);
+                    },
+                    onDragOver: (sourceIndex, targetIndex) => {
+                        log(`👆 DRAG OVER: Source ${sourceIndex + 1} → Target ${targetIndex + 1}`);
+                    },
+                    onDrop: (sourceIndex, targetIndex, newData) => {
+                        log(`✅ DROP SUCCESS: Row ${sourceIndex + 1} → Position ${targetIndex + 1}`);
+                        log(`📝 New order: ${newData.map(row => row.name).join(', ')}`);
+                    },
+                    onDragCancel: () => {
+                        log(`❌ DRAG CANCELLED`);
+                    }
+                },
+                
+                dom: document.getElementById('grid-container')
+            });
+            
+            // Add additional debugging by listening to DOM events
+            const container = document.getElementById('grid-container');
+            
+            container.addEventListener('dragstart', (e) => {
+                log(`🎯 DOM dragstart on: ${e.target.tagName} (${e.target.className})`);
+            });
+            
+            container.addEventListener('dragover', (e) => {
+                log(`🎯 DOM dragover on: ${e.target.tagName} (${e.target.className})`);
+            });
+            
+            container.addEventListener('drop', (e) => {
+                log(`🎯 DOM drop on: ${e.target.tagName} (${e.target.className})`);
+            });
+            
+            container.addEventListener('dragend', (e) => {
+                log(`🎯 DOM dragend on: ${e.target.tagName} (${e.target.className})`);
+            });
+            
+            log('✅ Grid initialized! Try dragging rows to see debug info.');
+            
+        } catch (error) {
+            log(`❌ Error: ${error.message}`);
+            console.error('Grid initialization failed:', error);
+        }
+    </script>
+</body>
+</html>
