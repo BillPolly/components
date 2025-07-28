@@ -55,9 +55,9 @@ export class GridViewModel {
     this.editingCell = { rowIndex, columnKey };
     const cellValue = this.model.getRow(rowIndex)[columnKey];
     
-    // Create editor container
+    // Create editor container that fills the cell
     const editorContainer = document.createElement('div');
-    editorContainer.style.cssText = 'width: 100%; position: relative;';
+    editorContainer.style.cssText = 'width: 100%; height: 100%; position: relative; display: flex; align-items: center;';
     
     // Create field editor
     this.currentEditor = this.createFieldEditor(column, cellValue, editorContainer);
@@ -641,6 +641,98 @@ export class GridViewModel {
   }
   
   startColumnResize(e, resizeHandle) {
+    e.preventDefault();
+    
+    const columnKey = resizeHandle.getAttribute('data-column-key');
+    const columnIndex = this.displayColumns.findIndex(col => col.key === columnKey);
+    
+    // Get the next column (if it exists)
+    const nextColumn = this.displayColumns[columnIndex + 1];
+    if (!nextColumn) {
+      // If there's no next column, fall back to single column resize
+      this.startSingleColumnResize(e, resizeHandle);
+      return;
+    }
+    
+    const th = resizeHandle.parentElement;
+    const nextTh = this.view.element.querySelector(`th[data-column-key="${nextColumn.key}"]`);
+    
+    const startX = e.clientX;
+    const startWidth = th.offsetWidth;
+    const startNextWidth = nextTh.offsetWidth;
+    const totalWidth = startWidth + startNextWidth;
+    
+    this.view.showResizeFeedback(columnKey);
+    
+    if (this.config.columnResizing.onResizeStart) {
+      this.config.columnResizing.onResizeStart(columnKey);
+    }
+    
+    const handleMouseMove = (e) => {
+      const diff = e.clientX - startX;
+      
+      // Calculate new widths
+      let newWidth = startWidth + diff;
+      let newNextWidth = startNextWidth - diff;
+      
+      // Apply constraints
+      const column = this.displayColumns[columnIndex];
+      const minWidth = this.parseWidth(column.minWidth || this.config.columnResizing.minWidth || '50px');
+      const maxWidth = this.parseWidth(column.maxWidth || this.config.columnResizing.maxWidth || '800px');
+      const nextMinWidth = this.parseWidth(nextColumn.minWidth || this.config.columnResizing.minWidth || '50px');
+      const nextMaxWidth = this.parseWidth(nextColumn.maxWidth || this.config.columnResizing.maxWidth || '800px');
+      
+      // Ensure both columns respect their min/max constraints
+      if (newWidth < minWidth) {
+        newWidth = minWidth;
+        newNextWidth = totalWidth - newWidth;
+      } else if (newWidth > maxWidth) {
+        newWidth = maxWidth;
+        newNextWidth = totalWidth - newWidth;
+      }
+      
+      if (newNextWidth < nextMinWidth) {
+        newNextWidth = nextMinWidth;
+        newWidth = totalWidth - newNextWidth;
+      } else if (newNextWidth > nextMaxWidth) {
+        newNextWidth = nextMaxWidth;
+        newWidth = totalWidth - newNextWidth;
+      }
+      
+      // Update both columns
+      const widthStr = `${newWidth}px`;
+      const nextWidthStr = `${newNextWidth}px`;
+      
+      this.model.resizeColumn(columnKey, widthStr);
+      this.model.resizeColumn(nextColumn.key, nextWidthStr);
+      this.view.updateColumnWidth(columnKey, widthStr);
+      this.view.updateColumnWidth(nextColumn.key, nextWidthStr);
+      
+      if (this.config.columnResizing.onColumnResize) {
+        this.config.columnResizing.onColumnResize(columnKey, `${startWidth}px`, widthStr);
+        this.config.columnResizing.onColumnResize(nextColumn.key, `${startNextWidth}px`, nextWidthStr);
+      }
+    };
+    
+    const handleMouseUp = () => {
+      this.view.hideResizeFeedback();
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      
+      if (this.config.columnResizing.onResizeEnd) {
+        const finalWidth = this.model.getColumnWidth(columnKey);
+        const finalNextWidth = this.model.getColumnWidth(nextColumn.key);
+        this.config.columnResizing.onResizeEnd(columnKey, finalWidth);
+        this.config.columnResizing.onResizeEnd(nextColumn.key, finalNextWidth);
+      }
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }
+  
+  // Fallback for resizing the last column (no adjacent column to the right)
+  startSingleColumnResize(e, resizeHandle) {
     e.preventDefault();
     
     const columnKey = resizeHandle.getAttribute('data-column-key');

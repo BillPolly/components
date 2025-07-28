@@ -60,12 +60,13 @@ export const TextField = {
       input.maxLength = maxLength;
     }
 
-    // Style the input
+    // Style the input to fit the cell exactly
     input.style.cssText = `
       width: 100%;
-      padding: 8px 12px;
-      border: 2px solid #e2e8f0;
-      border-radius: 6px;
+      height: 100%;
+      padding: 6px 8px;
+      border: 1px solid #3b82f6;
+      border-radius: 0;
       font-size: 14px;
       font-family: inherit;
       background: ${disabled ? '#f8fafc' : '#ffffff'};
@@ -73,6 +74,7 @@ export const TextField = {
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
       resize: ${multiline ? 'vertical' : 'none'};
+      box-sizing: border-box;
       ${multiline ? 'min-height: 80px;' : ''}
     `;
 

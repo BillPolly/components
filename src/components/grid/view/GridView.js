@@ -404,7 +404,8 @@ export class GridView {
     if (cell) {
       cell.innerHTML = '';
       cell.appendChild(editorElement);
-      cell.style.padding = '4px';
+      // Keep original padding - editor will handle its own spacing
+      cell.style.padding = '0';
     }
   }
   
