@@ -721,29 +721,14 @@ export class TreeView {
    * Start inline editing of a node label
    */
   startEditingNode(nodeId, currentValue, emoji = '') {
-    console.log('=== VIEW START EDITING ===');
-    console.log('NodeId:', nodeId);
-    console.log('CurrentValue:', currentValue);
-    console.log('Emoji:', emoji);
-    
     const nodeElement = this.element.querySelector(`[data-node-id="${nodeId}"]`);
-    console.log('Found node element:', nodeElement);
-    if (!nodeElement) {
-      console.log('No node element found');
-      return null;
-    }
+    if (!nodeElement) return null;
     
     const labelElement = nodeElement.querySelector('.tree-node-label');
-    console.log('Found label element:', labelElement);
-    console.log('Label already editing?', labelElement?.classList.contains('editing'));
-    if (!labelElement || labelElement.classList.contains('editing')) {
-      console.log('No label element or already editing');
-      return null;
-    }
+    if (!labelElement || labelElement.classList.contains('editing')) return null;
     
     // Store original content and emoji
     const originalContent = labelElement.textContent;
-    console.log('Original content:', originalContent);
     labelElement.setAttribute('data-original', originalContent);
     labelElement.setAttribute('data-emoji', emoji);
     
@@ -753,11 +738,9 @@ export class TreeView {
     editContainer.style.display = 'flex';
     editContainer.style.alignItems = 'center';
     editContainer.style.gap = '4px';
-    console.log('Created edit container');
     
     // Add emoji if present
     if (emoji) {
-      console.log('Adding emoji span:', emoji);
       const emojiSpan = document.createElement('span');
       emojiSpan.textContent = emoji;
       emojiSpan.className = 'tree-node-emoji';
@@ -771,22 +754,18 @@ export class TreeView {
     input.value = currentValue || originalContent;
     input.style.flex = '1';
     input.style.minWidth = '0';
-    console.log('Created input with value:', input.value);
     
     editContainer.appendChild(input);
     
     // Replace label content with edit container
-    console.log('Replacing label content');
     labelElement.innerHTML = '';
     labelElement.appendChild(editContainer);
     labelElement.classList.add('editing');
     
     // Focus and select all text
-    console.log('Focusing and selecting input');
     input.focus();
     input.select();
     
-    console.log('Returning input element');
     return input;
   }
   
@@ -794,30 +773,14 @@ export class TreeView {
    * Finish editing a node label
    */
   finishEditingNode(nodeId, newValue, cancelled = false) {
-    console.log('=== VIEW FINISH EDITING ===');
-    console.log('NodeId:', nodeId);
-    console.log('NewValue:', newValue);
-    console.log('Cancelled:', cancelled);
-    
     const nodeElement = this.element.querySelector(`[data-node-id="${nodeId}"]`);
-    console.log('Found node element:', nodeElement);
-    if (!nodeElement) {
-      console.log('No node element found');
-      return null;
-    }
+    if (!nodeElement) return null;
     
     const labelElement = nodeElement.querySelector('.tree-node-label');
-    console.log('Found label element:', labelElement);
-    console.log('Label has editing class?', labelElement?.classList.contains('editing'));
-    if (!labelElement || !labelElement.classList.contains('editing')) {
-      console.log('No label element or not editing');
-      return null;
-    }
+    if (!labelElement || !labelElement.classList.contains('editing')) return null;
     
     const originalContent = labelElement.getAttribute('data-original');
     const emoji = labelElement.getAttribute('data-emoji') || '';
-    console.log('Original content:', originalContent);
-    console.log('Stored emoji:', emoji);
     
     labelElement.removeAttribute('data-original');
     labelElement.removeAttribute('data-emoji');
@@ -827,26 +790,18 @@ export class TreeView {
     let textValue = originalContent;
     if (!cancelled) {
       const input = labelElement.querySelector('.tree-node-label-input');
-      console.log('Found input element:', input);
-      console.log('Input value:', input?.value);
       textValue = newValue || (input ? input.value : originalContent);
     }
-    console.log('Text value to use:', textValue);
     
     // Reconstruct full value with emoji
     const finalValue = emoji ? `${emoji} ${textValue}` : textValue;
-    console.log('Final reconstructed value:', finalValue);
-    
     labelElement.textContent = finalValue;
-    console.log('Set label text content to:', finalValue);
     
-    const result = {
+    return {
       originalValue: originalContent,
       newValue: finalValue,
       changed: !cancelled && finalValue !== originalContent
     };
-    console.log('Returning result:', result);
-    return result;
   }
   
   /**

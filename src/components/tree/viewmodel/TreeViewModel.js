@@ -69,62 +69,33 @@ export class TreeViewModel {
    */
   setupClickHandlers() {
     this.expandClickHandler = (event) => {
-      console.log('=== CLICK HANDLER ===');
-      console.log('Target:', event.target);
-      console.log('Target classes:', event.target.className);
-      
       // Find the element with data-action attribute
       const actionElement = event.target.closest('[data-action]');
-      console.log('Action element:', actionElement);
-      if (!actionElement) {
-        console.log('No action element found');
-        return;
-      }
+      if (!actionElement) return;
       
       const action = actionElement.getAttribute('data-action');
       const nodeId = actionElement.getAttribute('data-node-id');
       
-      console.log('Action:', action);
-      console.log('NodeId:', nodeId);
-      console.log('Config editable:', this.config.editable);
-      
-      if (!nodeId) {
-        console.log('No nodeId found');
-        return;
-      }
+      if (!nodeId) return;
       
       event.stopPropagation();
       
       switch (action) {
         case 'expand':
-          console.log('Handling expand action');
           this.toggleExpansion(nodeId);
           break;
           
         case 'edit':
-          console.log('Handling edit action');
-          console.log('Edit conditions:', {
-            editable: this.config.editable,
-            editingNodeId: this.editingNodeId,
-            isDragging: this.dragState.isDragging
-          });
           if (this.config.editable && !this.editingNodeId && !this.dragState.isDragging) {
-            console.log('Starting edit');
             event.preventDefault();
             this.startEditing(nodeId);
-          } else {
-            console.log('Edit conditions not met');
           }
           break;
           
         case 'select':
-          console.log('Handling select action');
           // Only select if not clicking on a more specific action
           if (event.target === actionElement || !event.target.closest('[data-action]', actionElement)) {
-            console.log('Proceeding with selection');
             this.handleNodeClick(nodeId, event);
-          } else {
-            console.log('Skipping selection');
           }
           break;
       }
@@ -556,25 +527,16 @@ export class TreeViewModel {
    * Inline editing methods
    */
   startEditing(nodeId) {
-    console.log('=== START EDITING ===');
-    console.log('NodeId:', nodeId);
-    
     // Finish any existing edit first
     if (this.editingNodeId) {
-      console.log('Finishing existing edit:', this.editingNodeId);
       this.finishEditing();
     }
     
     const node = this.model.getNode(nodeId);
-    console.log('Found node:', node);
-    if (!node) {
-      console.log('No node found, returning false');
-      return false;
-    }
+    if (!node) return false;
     
     this.editingNodeId = nodeId;
     const fullValue = node.name || node.label || node.title || String(node);
-    console.log('Full value:', fullValue);
     
     // Extract text part (remove emoji if present)
     // Check if starts with emoji (Unicode emoji characters)
@@ -582,13 +544,7 @@ export class TreeViewModel {
     const currentValue = emojiMatch ? emojiMatch[2] : fullValue;
     const emoji = emojiMatch ? emojiMatch[1] : '';
     
-    console.log('Emoji match result:', emojiMatch);
-    console.log('Extracted emoji:', emoji);
-    console.log('Extracted text:', currentValue);
-    console.log('Calling view.startEditingNode');
-    
     this.editingInput = this.view.startEditingNode(nodeId, currentValue, emoji);
-    console.log('Edit input returned:', this.editingInput);
     
     if (this.editingInput) {
       // Add event listeners to the input
@@ -611,84 +567,53 @@ export class TreeViewModel {
   }
   
   finishEditing(newValue = null) {
-    console.log('=== FINISH EDITING ===');
-    console.log('EditingNodeId:', this.editingNodeId);
-    console.log('NewValue provided:', newValue);
-    
-    if (!this.editingNodeId) {
-      console.log('No editing node id, returning null');
-      return null;
-    }
+    if (!this.editingNodeId) return null;
     
     // Store the editing node id before clearing it
     const currentEditingNodeId = this.editingNodeId;
     
     const finalValue = newValue || (this.editingInput ? this.editingInput.value : null);
-    console.log('Final value to use:', finalValue);
-    console.log('Calling view.finishEditingNode');
-    
     const result = this.view.finishEditingNode(currentEditingNodeId, finalValue);
-    console.log('View finish result:', result);
     
     // Clear editing state immediately to prevent double calls
     this.editingNodeId = null;
     this.editingInput = null;
     
     if (result && result.changed) {
-      console.log('Result shows change, updating model');
       // Update the model with new value
       const node = this.model.getNode(currentEditingNodeId);
-      console.log('Looking for node with ID:', currentEditingNodeId);
-      console.log('Found model node:', node);
-      console.log('Model data:', this.model.data);
       
       if (node) {
         const oldValue = result.originalValue;
         const newNodeValue = result.newValue;
-        console.log('Old value:', oldValue);
-        console.log('New value:', newNodeValue);
         
         // Update node data (prefer 'name' field)
         if ('name' in node) {
-          console.log('Updating node.name');
           node.name = newNodeValue;
         } else if ('label' in node) {
-          console.log('Updating node.label');
           node.label = newNodeValue;
         } else if ('title' in node) {
-          console.log('Updating node.title');
           node.title = newNodeValue;
         } else {
-          console.log('Adding node.name');
           // If no standard field exists, add name
           node.name = newNodeValue;
         }
         
-        console.log('Updated node:', node);
-        
         // Re-render to show the change
-        console.log('Re-rendering tree');
         this.render();
         
         // Call callback if provided
         if (this.config.onNodeEdit) {
-          console.log('Calling onNodeEdit callback');
           this.config.onNodeEdit(currentEditingNodeId, newNodeValue, oldValue, node);
         }
         
         // Trigger data change callback
         if (this.config.onDataChange) {
-          console.log('Calling onDataChange callback');
           this.config.onDataChange(this.model.data);
         }
-      } else {
-        console.log('Node not found in model - this is the problem!');
       }
-    } else {
-      console.log('No change detected or no result');
     }
     
-    console.log('Finished editing process');
     return result;
   }
   
