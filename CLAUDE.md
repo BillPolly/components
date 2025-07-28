@@ -21,8 +21,12 @@ npm test                # Run all Jest tests with ES modules
 npm run test:watch      # Run tests in watch mode
 ```
 
+**Note**: Tests use `NODE_OPTIONS='--experimental-vm-modules'` to support ES6 modules in Jest.
+
 ### Accessing Examples
 Visit `http://localhost:3600/examples/` for interactive demos and component examples.
+
+**Alternative port**: Use `PORT=xxxx npm start` to run server on a different port.
 
 ## Core Architecture
 
@@ -35,6 +39,8 @@ Component.create(umbilical)
 ```
 
 The `umbilical` object is the component's entire world - it provides all external dependencies, capabilities, and communication channels. Components cannot access anything outside their umbilical, ensuring perfect isolation.
+
+**Key Philosophy**: All interaction is messaging. All power is granted. All components live inside their umbilicals. The umbilical acts as both a capability boundary and message router, making this protocol suitable for unifying actors, components, and behavior trees under one paradigm.
 
 ### Component Modes
 
@@ -54,6 +60,7 @@ Components support three operational modes through the same `create()` function:
 - **ImageViewer** (`src/components/image-viewer/`): Image display with pan/zoom controls
 - **Grid** (`src/components/grid/`): Interactive data grid with MVVM architecture, supports table/attribute modes
 - **Field Editors** (`src/components/field-editors/`): Reusable input components (TextField, NumericField, BooleanField)
+- **Tree** (`src/components/tree/`): Hierarchical tree view component with drag & drop, expansion state management (in development)
 
 ### Utilities
 
@@ -114,15 +121,30 @@ The test suite (`test/integration.test.js`) demonstrates composition patterns:
 - Field editors have comprehensive integration tests showing composition patterns
 - Grid component has detailed tests for MVVM architecture and mode switching
 
+### Complex Component Architecture
+For advanced components like Grid and Tree, the codebase uses internal MVVM patterns:
+- **Model**: Pure data layer (e.g., `GridModel.js`, `TreeModel.js`) - handles state, validation, business logic
+- **View**: DOM manipulation layer (e.g., `GridView.js`, `TreeView.js`) - renders UI, handles DOM events
+- **ViewModel**: Coordination layer (e.g., `GridViewModel.js`) - bridges Model and View, manages interactions
+
+These internal patterns maintain umbilical protocol externally while enabling sophisticated internal organization.
+
 ### File Organization
 ```
 src/
 ├── components/          # Individual components (each in own directory)
+│   ├── grid/           # Complex components use MVVM structure:
+│   │   ├── index.js    #   - Main component (umbilical protocol)
+│   │   ├── model/      #   - Model layer (data, state, business logic)
+│   │   ├── view/       #   - View layer (DOM, rendering)
+│   │   └── viewmodel/  #   - ViewModel layer (coordination)
+│   └── counter/        # Simple components are single files
 ├── umbilical/          # Protocol base utilities
 └── utils.js            # Legacy utilities
 
 test/                   # Jest tests matching component structure
 public/examples/        # Demo applications and interactive examples
+docs/                   # Protocol design documentation
 ```
 
 ## Key Benefits
