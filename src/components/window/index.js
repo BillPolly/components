@@ -221,6 +221,12 @@ export const Window = {
     let isResizing = false;
     let offsetX, offsetY, startWidth, startHeight;
 
+    // Store document event handlers for cleanup
+    const documentHandlers = {
+      mousemove: null,
+      mouseup: null
+    };
+
     // Close button
     closeBtn.addEventListener('click', () => {
       instance.close();
@@ -240,60 +246,78 @@ export const Window = {
     windowEl.addEventListener('mousedown', bringToFront);
     content.addEventListener('mousedown', bringToFront);
 
+    // Document-level mouse handlers
+    documentHandlers.mousemove = (e) => {
+      if (isDragging) {
+        e.preventDefault();
+        const x = e.clientX - offsetX;
+        const y = e.clientY - offsetY;
+
+        const maxX = window.innerWidth - windowEl.offsetWidth;
+        const maxY = window.innerHeight - windowEl.offsetHeight;
+
+        windowEl.style.left = `${Math.min(Math.max(0, x), maxX)}px`;
+        windowEl.style.top = `${Math.min(Math.max(0, y), maxY)}px`;
+      } else if (isResizing) {
+        e.preventDefault();
+        const width = startWidth + (e.clientX - offsetX);
+        const height = startHeight + (e.clientY - offsetY);
+
+        if (width > 200 && height > 150) {
+          windowEl.style.width = `${width}px`;
+          windowEl.style.height = `${height}px`;
+          dispatchResize(width, height);
+        }
+      }
+    };
+
+    documentHandlers.mouseup = (e) => {
+      if (isDragging || isResizing) {
+        e.preventDefault();
+        isDragging = false;
+        isResizing = false;
+        
+        // Reset cursor
+        document.body.style.cursor = '';
+      }
+    };
+
+    // Add document listeners
+    document.addEventListener('mousemove', documentHandlers.mousemove);
+    document.addEventListener('mouseup', documentHandlers.mouseup);
+
     // Dragging
     if (options.draggable) {
       titleBar.addEventListener('mousedown', (e) => {
-        if (e.target === titleBar || e.target.parentNode === titleBar) {
+        // Only start drag if clicking on titlebar itself or title text
+        if (e.target === titleBar || e.target === titleElement) {
+          e.preventDefault();
           isDragging = true;
           offsetX = e.clientX - windowEl.getBoundingClientRect().left;
           offsetY = e.clientY - windowEl.getBoundingClientRect().top;
+          
+          // Set grabbing cursor
+          document.body.style.cursor = 'grabbing';
+          
+          // Bring to front when starting drag
+          bringToFront();
         }
-      });
-
-      document.addEventListener('mousemove', (e) => {
-        if (isDragging) {
-          const x = e.clientX - offsetX;
-          const y = e.clientY - offsetY;
-
-          const maxX = window.innerWidth - windowEl.offsetWidth;
-          const maxY = window.innerHeight - windowEl.offsetHeight;
-
-          windowEl.style.left = `${Math.min(Math.max(0, x), maxX)}px`;
-          windowEl.style.top = `${Math.min(Math.max(0, y), maxY)}px`;
-        }
-      });
-
-      document.addEventListener('mouseup', () => {
-        isDragging = false;
       });
     }
 
     // Resizing
     if (options.resizable && resizeHandle) {
       resizeHandle.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         isResizing = true;
         startWidth = parseInt(getComputedStyle(windowEl).width, 10);
         startHeight = parseInt(getComputedStyle(windowEl).height, 10);
         offsetX = e.clientX;
         offsetY = e.clientY;
-        e.stopPropagation();
-      });
-
-      document.addEventListener('mousemove', (e) => {
-        if (isResizing) {
-          const width = startWidth + (e.clientX - offsetX);
-          const height = startHeight + (e.clientY - offsetY);
-
-          if (width > 200 && height > 150) {
-            windowEl.style.width = `${width}px`;
-            windowEl.style.height = `${height}px`;
-            dispatchResize(width, height);
-          }
-        }
-      });
-
-      document.addEventListener('mouseup', () => {
-        isResizing = false;
+        
+        // Bring to front when starting resize
+        bringToFront();
       });
     }
 
@@ -487,12 +511,19 @@ export const Window = {
     }
 
     // Cleanup handler
-    if (umbilical.onDestroy) {
-      instance.destroy = () => {
-        windowEl.remove();
+    instance.destroy = () => {
+      // Remove document event listeners
+      document.removeEventListener('mousemove', documentHandlers.mousemove);
+      document.removeEventListener('mouseup', documentHandlers.mouseup);
+      
+      // Remove window from DOM
+      windowEl.remove();
+      
+      // Call destroy callback if provided
+      if (umbilical.onDestroy) {
         umbilical.onDestroy(instance);
-      };
-    }
+      }
+    };
 
     return instance;
   }
