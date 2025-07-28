@@ -162,9 +162,9 @@
                 <div class="demo-info">
                     <h3>Try these interactive features:</h3>
                     <ul>
-                        <li><strong>Row Dragging:</strong> Drag the ⋮⋮ handle to reorder employees</li>
+                        <li><strong>Row Dragging:</strong> Drag any row to reorder employees (entire row is draggable with smooth animations)</li>
                         <li><strong>Column Resizing:</strong> Hover over column borders and drag to resize</li>
-                        <li><strong>Column Dragging:</strong> Drag column headers to reorder columns</li>
+                        <li><strong>Column Dragging:</strong> Drag column headers to reorder entire columns (whole column moves with visual feedback)</li>
                         <li><strong>Inline Editing:</strong> Click any cell to edit values in place</li>
                         <li><strong>Selection:</strong> Check boxes to select multiple rows</li>
                         <li><strong>Sorting:</strong> Click column headers to sort data</li>
@@ -347,6 +347,15 @@
                 
                 columnDragging: {
                     enabled: true,
+                    onColumnDragStart: (columnKey, columnIndex) => {
+                        logActivity(`Started dragging column: ${columnKey} (index ${columnIndex})`);
+                    },
+                    onColumnDragOver: (sourceIndex, targetIndex) => {
+                        logActivity(`Column drag over: ${sourceIndex} → ${targetIndex}`);
+                    },
+                    onColumnDrop: (sourceIndex, targetIndex, newColumns) => {
+                        logActivity(`Column moved: ${sourceIndex} → ${targetIndex}`);
+                    },
                     onColumnOrderChange: (newOrder) => {
                         logActivity(`Columns reordered: ${newOrder.join(', ')}`);
                     }

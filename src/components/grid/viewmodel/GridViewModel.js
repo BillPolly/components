@@ -459,9 +459,9 @@ export class GridViewModel {
   
   setupColumnDragging() {
     this.view.addEventListener(this.view.element, 'dragstart', (e) => {
-      const header = e.target.closest('.column-header');
-      if (header) {
-        const columnIndex = parseInt(header.getAttribute('data-column-index'));
+      const draggedHeader = e.target.closest('.column-header');
+      if (draggedHeader) {
+        const columnIndex = parseInt(draggedHeader.getAttribute('data-column-index'));
         const column = this.displayColumns[columnIndex];
         
         // Check if column is fixed
@@ -474,6 +474,89 @@ export class GridViewModel {
         this.view.showColumnDragFeedback(columnIndex);
         
         e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', columnIndex.toString());
+        
+        // Create custom drag image for column (entire column for perfect illusion)
+        // Create a simple container div that will hold our column
+        const dragContainer = document.createElement('div');
+        dragContainer.style.cssText = `
+          position: fixed;
+          top: -9999px;
+          left: -9999px;
+          opacity: 0.9;
+          border: 2px solid #3b82f6;
+          border-radius: 6px;
+          box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+          background: white;
+        `;
+        
+        // Get all elements for this column
+        const columnElements = this.view.getColumnElements(column.key);
+        
+        if (columnElements.length > 0) {
+          // Create a table structure for the column
+          const table = document.createElement('table');
+          table.style.cssText = `
+            border-collapse: collapse;
+            font-family: inherit;
+            font-size: 14px;
+            margin: 0;
+          `;
+          
+          // Process header
+          const header = columnElements[0];
+          if (header.tagName === 'TH') {
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const headerClone = header.cloneNode(true);
+            
+            // Remove draggable attribute and resize handle
+            headerClone.removeAttribute('draggable');
+            const resizeHandle = headerClone.querySelector('.resize-handle');
+            if (resizeHandle) resizeHandle.remove();
+            
+            headerRow.appendChild(headerClone);
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+          }
+          
+          // Process body cells
+          const tbody = document.createElement('tbody');
+          for (let i = 1; i < columnElements.length; i++) {
+            const cell = columnElements[i];
+            if (cell.tagName === 'TD') {
+              const row = document.createElement('tr');
+              const cellClone = cell.cloneNode(true);
+              
+              // Get the original row's background color
+              const originalRow = cell.parentElement;
+              const rowStyles = window.getComputedStyle(originalRow);
+              if (rowStyles.backgroundColor && rowStyles.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+                cellClone.style.backgroundColor = rowStyles.backgroundColor;
+              }
+              
+              row.appendChild(cellClone);
+              tbody.appendChild(row);
+            }
+          }
+          table.appendChild(tbody);
+          
+          // Add table to container
+          dragContainer.appendChild(table);
+          
+          // Append to body (required for setDragImage)
+          document.body.appendChild(dragContainer);
+          
+          // Set the drag image
+          e.dataTransfer.setDragImage(dragContainer, e.offsetX || 50, e.offsetY || 20);
+          
+          // Clean up after a short delay
+          setTimeout(() => {
+            if (document.body.contains(dragContainer)) {
+              document.body.removeChild(dragContainer);
+            }
+          }, 0);
+        }
         
         if (this.config.columnDragging.onColumnDragStart) {
           this.config.columnDragging.onColumnDragStart(column.key, columnIndex);
@@ -485,21 +568,40 @@ export class GridViewModel {
       if (this.model.dragType === 'column') {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
+        
+        const header = e.target.closest('.column-header');
+        if (header && !header.classList.contains('dragging-column')) {
+          const targetIndex = parseInt(header.getAttribute('data-column-index'));
+          
+          // Only show drop zone if target is different from source
+          if (targetIndex !== this.model.dragIndex) {
+            this.model.setDropTarget(targetIndex);
+            this.view.showColumnDropZone(targetIndex);
+            
+            if (this.config.columnDragging.onColumnDragOver) {
+              this.config.columnDragging.onColumnDragOver(this.model.dragIndex, targetIndex);
+            }
+          }
+        }
       }
     }, 'column-drag');
     
     this.view.addEventListener(this.view.element, 'drop', (e) => {
       if (this.model.dragType === 'column') {
         e.preventDefault();
+        console.log('💧 Column drop event triggered');
         
         const header = e.target.closest('.column-header');
-        if (header) {
+        if (header && !header.classList.contains('dragging-column')) {
           const targetIndex = parseInt(header.getAttribute('data-column-index'));
           const sourceIndex = this.model.dragIndex;
+          console.log('✅ Column Drop - Source:', sourceIndex, 'Target:', targetIndex);
           
           if (sourceIndex !== null && sourceIndex !== targetIndex) {
+            console.log('🔄 Performing column move...');
             const newColumns = this.model.moveColumn(sourceIndex, targetIndex);
             this.view.updateColumnOrder(newColumns);
+            console.log('✅ Column move completed');
             
             if (this.config.columnDragging.onColumnDrop) {
               this.config.columnDragging.onColumnDrop(sourceIndex, targetIndex, newColumns);
@@ -523,13 +625,7 @@ export class GridViewModel {
       }
     }, 'column-drag');
     
-    // Make column headers draggable
-    setTimeout(() => {
-      const headers = this.view.element.querySelectorAll('.column-header');
-      headers.forEach(header => {
-        header.setAttribute('draggable', 'true');
-      });
-    }, 0);
+    // Column headers are made draggable during rendering in GridView
   }
   
   // Column resizing

@@ -101,6 +101,11 @@ export class GridView {
       th.setAttribute('data-column-index', index);
       
       const width = this.getColumnWidth(column);
+      // Make column draggable if column dragging is enabled
+      if (this.config.columnDragging?.enabled) {
+        th.setAttribute('draggable', 'true');
+      }
+      
       th.style.cssText = `
         padding: 12px 8px;
         background: #f8fafc;
@@ -627,18 +632,124 @@ export class GridView {
   }
   
   showColumnDragFeedback(columnIndex) {
+    // Find the column key from the header
     const header = this.element.querySelector(`th[data-column-index="${columnIndex}"]`);
-    if (header) {
-      header.style.opacity = '0.5';
-      header.classList.add('dragging-column');
+    if (!header) {
+      return;
     }
+    
+    const columnKey = header.getAttribute('data-column-key');
+    const columnElements = this.getColumnElements(columnKey);
+    
+    // Apply the SAME styling as row dragging - visible but styled
+    columnElements.forEach((element) => {
+      element.classList.add('dragging-column');
+      element.style.cssText += `
+        opacity: 0.7;
+        transform: translate3d(0, 0, 0) scale(1.02);
+        z-index: 1000;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        background: #ffffff !important;
+        border: 2px solid #3b82f6;
+      `;
+    });
+    
+    // NO ghost placeholders for columns - the styled column + drag image is enough
+  }
+  
+  // Removed createColumnGhostPlaceholder - columns can't have placeholders like rows do
+  
+  getColumnElements(columnKey) {
+    // Get header and all cells for this column
+    const elements = [];
+    
+    // Add header
+    const header = this.element.querySelector(`th[data-column-key="${columnKey}"]`);
+    if (header) {
+      elements.push(header);
+    }
+    
+    // Add all cells in this column
+    const cells = this.element.querySelectorAll(`td[data-column-key="${columnKey}"]`);
+    cells.forEach(cell => elements.push(cell));
+    
+    return elements;
   }
   
   hideColumnDragFeedback() {
-    const draggingHeaders = this.element.querySelectorAll('.dragging-column');
-    draggingHeaders.forEach(header => {
-      header.style.opacity = '1';
-      header.classList.remove('dragging-column');
+    // Restore original styling of dragging elements
+    const draggingElements = this.element.querySelectorAll('.dragging-column');
+    draggingElements.forEach(element => {
+      element.classList.remove('dragging-column');
+      // Remove the inline styles we added
+      element.style.cssText = element.style.cssText
+        .replace(/opacity:[^;]*;?/g, '')
+        .replace(/transform:[^;]*;?/g, '')
+        .replace(/z-index:[^;]*;?/g, '')
+        .replace(/box-shadow:[^;]*;?/g, '')
+        .replace(/background:[^;]*;?/g, '')
+        .replace(/border:[^;]*;?/g, '');
+    });
+    
+    // Clear column drop indicators
+    this.clearColumnDropIndicators();
+  }
+  
+  showColumnDropZone(targetIndex) {
+    // Clear previous drop indicators
+    this.clearColumnDropIndicators();
+    
+    const targetHeader = this.element.querySelector(`th[data-column-index="${targetIndex}"]`);
+    if (targetHeader && !targetHeader.classList.contains('dragging-column')) {
+      const targetColumnKey = targetHeader.getAttribute('data-column-key');
+      const columnElements = this.getColumnElements(targetColumnKey);
+      
+      columnElements.forEach(element => {
+        // Create drop indicator line
+        const indicator = document.createElement('div');
+        indicator.className = 'column-drop-indicator';
+        indicator.style.cssText = `
+          position: absolute;
+          left: -2px;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: #3b82f6;
+          border-radius: 2px;
+          box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+          z-index: 999;
+          animation: columnPulse 1s infinite;
+        `;
+        
+        // Position indicator at the left edge of target column
+        element.style.position = 'relative';
+        element.insertBefore(indicator, element.firstChild);
+        element.classList.add('column-drop-target');
+      });
+      
+      // Add column pulse animation if not already defined
+      if (!document.querySelector('#column-indicator-styles')) {
+        const style = document.createElement('style');
+        style.id = 'column-indicator-styles';
+        style.textContent = `
+          @keyframes columnPulse {
+            0%, 100% { opacity: 1; width: 4px; }
+            50% { opacity: 0.7; width: 6px; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    }
+  }
+  
+  clearColumnDropIndicators() {
+    const indicators = this.element.querySelectorAll('.column-drop-indicator');
+    indicators.forEach(indicator => indicator.remove());
+    
+    const dropTargets = this.element.querySelectorAll('.column-drop-target');
+    dropTargets.forEach(target => {
+      target.classList.remove('column-drop-target');
+      target.style.position = '';
     });
   }
   
@@ -667,7 +778,9 @@ export class GridView {
   }
   
   updateColumnOrder(newColumns) {
+    console.log('🔄 Updating column order with:', newColumns.map(col => col.key));
     this.render(this.currentData, newColumns);
+    console.log('✅ Column order updated');
   }
   
   // Cleanup
