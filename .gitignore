@@ -45,6 +45,9 @@ pids/
 temp/
 tmp/
 
+# Components being converted
+components-to-convert/
+
 # Optional npm cache directory
 .npm/
 
