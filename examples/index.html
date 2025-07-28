@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Umbilical Component Protocol - Examples</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="alternate icon" href="/favicon.ico">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .example {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: #f9f9f9;
+        }
+        
+        .example h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .example p {
+            color: #666;
+            margin: 10px 0;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 5px 5px 5px 0;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+        
+        .btn.secondary {
+            background: #6c757d;
+        }
+        
+        .btn.secondary:hover {
+            background: #545b62;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        
+        .console-output {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 15px 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Umbilical Component Protocol - Examples</h1>
+    
+    <p>These examples demonstrate the key concepts of the Umbilical Component Protocol:</p>
+    <ul>
+        <li><strong>Single Interface:</strong> Every component has exactly one function: <code>create(umbilical)</code></li>
+        <li><strong>Perfect Isolation:</strong> Components can only access capabilities provided through the umbilical</li>
+        <li><strong>Agent-Friendly:</strong> Designed specifically for AI agents to discover, test, and compose</li>
+        <li><strong>Environmental Adaptation:</strong> Same component behaves differently based on umbilical capabilities</li>
+    </ul>
+
+    <div class="example">
+        <h3>Interactive Counter App</h3>
+        <p>A complete application built by composing three independent components: Counter (state), Display (rendering), and Button (interaction).</p>
+        <a href="counter-app.html" class="btn">View Counter App</a>
+        <p><em>Shows real DOM interaction and component composition in a browser environment.</em></p>
+    </div>
+
+    <div class="example">
+        <h3>Agent Composition Demo</h3>
+        <p>Demonstrates how an AI agent would discover component requirements, create umbilicals, and compose a working application programmatically.</p>
+        <button id="run-composition" class="btn secondary">Run Composition Demo</button>
+        <p><em>View the browser console to see the agent workflow in action.</em></p>
+        
+        <div id="composition-output" class="console-output" style="display: none;">
+            <div id="composition-log"></div>
+        </div>
+    </div>
+
+    <div class="example">
+        <h3>Component Introspection</h3>
+        <p>Shows how agents can discover what capabilities each component requires before instantiation.</p>
+        <button id="run-introspection" class="btn secondary">Discover Requirements</button>
+        
+        <div id="introspection-output" class="console-output" style="display: none;">
+            <div id="introspection-log"></div>
+        </div>
+    </div>
+
+    <div class="example">
+        <h3>Testing Patterns</h3>
+        <p>Demonstrates how the umbilical protocol makes components trivially testable through umbilical mocking.</p>
+        <a href="../test/example-tests.html" class="btn secondary">View Test Examples</a>
+        <p><em>Shows unit testing patterns that would be perfect for AI agents.</em></p>
+    </div>
+
+    <script type="module">
+        import { runCompositionDemo } from './composition-demo.js';
+        import { Counter } from '../src/components/counter/index.js';
+        import { Display } from '../src/components/display/index.js';
+        import { Button } from '../src/components/button/index.js';
+        import { UmbilicalUtils } from '../src/umbilical/index.js';
+
+        // Composition demo
+        document.getElementById('run-composition').addEventListener('click', () => {
+            const output = document.getElementById('composition-output');
+            const log = document.getElementById('composition-log');
+            
+            // Clear previous output
+            log.innerHTML = '';
+            output.style.display = 'block';
+            
+            // Capture console output
+            const originalLog = console.log;
+            console.log = (...args) => {
+                originalLog(...args);
+                log.innerHTML += '<div>' + args.join(' ') + '</div>';
+                log.scrollTop = log.scrollHeight;
+            };
+            
+            try {
+                runCompositionDemo();
+            } finally {
+                console.log = originalLog;
+            }
+        });
+
+        // Introspection demo
+        document.getElementById('run-introspection').addEventListener('click', () => {
+            const output = document.getElementById('introspection-output');
+            const log = document.getElementById('introspection-log');
+            
+            log.innerHTML = '';
+            output.style.display = 'block';
+            
+            const logToDiv = (message) => {
+                log.innerHTML += '<div>' + message + '</div>';
+                log.scrollTop = log.scrollHeight;
+            };
+
+            logToDiv('🔍 Discovering component requirements...\n');
+
+            // Discover Counter requirements
+            logToDiv('=== Counter Component ===');
+            const counterReqs = UmbilicalUtils.createRequirements();
+            Counter.create({
+                describe: (reqs) => {
+                    Object.entries(reqs.getAll()).forEach(([key, spec]) => {
+                        counterReqs.add(key, spec.type, spec.description);
+                    });
+                }
+            });
+            
+            Object.entries(counterReqs.getAll()).forEach(([key, spec]) => {
+                logToDiv(`  ${key}: ${spec.type} - ${spec.description}`);
+            });
+
+            // Discover Display requirements
+            logToDiv('\n=== Display Component ===');
+            const displayReqs = UmbilicalUtils.createRequirements();
+            Display.create({
+                describe: (reqs) => {
+                    Object.entries(reqs.getAll()).forEach(([key, spec]) => {
+                        displayReqs.add(key, spec.type, spec.description);
+                    });
+                }
+            });
+            
+            Object.entries(displayReqs.getAll()).forEach(([key, spec]) => {
+                logToDiv(`  ${key}: ${spec.type} - ${spec.description}`);
+            });
+
+            // Discover Button requirements
+            logToDiv('\n=== Button Component ===');
+            const buttonReqs = UmbilicalUtils.createRequirements();
+            Button.create({
+                describe: (reqs) => {
+                    Object.entries(reqs.getAll()).forEach(([key, spec]) => {
+                        buttonReqs.add(key, spec.type, spec.description);
+                    });
+                }
+            });
+            
+            Object.entries(buttonReqs.getAll()).forEach(([key, spec]) => {
+                logToDiv(`  ${key}: ${spec.type} - ${spec.description}`);
+            });
+
+            logToDiv('\n✅ Component discovery complete!');
+            logToDiv('\nℹ️  An AI agent would use this information to:');
+            logToDiv('   1. Generate appropriate umbilical objects');
+            logToDiv('   2. Create mock umbilicals for testing');
+            logToDiv('   3. Validate component compatibility');
+            logToDiv('   4. Compose working applications');
+        });
+    </script>
+</body>
+</html>
