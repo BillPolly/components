@@ -16,14 +16,20 @@ Then visit:
 ## Project Structure
 
 ```
-src/
-├── umbilical/           # Protocol base utilities
+public/                 # Static content served by Express
+├── index.html          # Redirects to examples
+├── examples/           # Demo applications
+├── favicon.ico
+└── favicon.svg
+src/                    # Source code
+├── umbilical/          # Protocol base utilities
 │   └── index.js        # UmbilicalUtils, UmbilicalError, etc.
 ├── components/         # Individual components
 │   ├── counter/        # Pure state management
 │   ├── display/        # DOM rendering
 │   └── button/         # User interaction
-examples/               # Demo applications
+└── utils.js            # Original utils
+server/                 # Express server
 test/                   # Component tests (Jest)
 docs/                   # Protocol documentation
 ```

@@ -8,10 +8,10 @@
  * 4. Test the composition
  */
 
-import { Counter } from '../src/components/counter/index.js';
-import { Display } from '../src/components/display/index.js';
-import { Button } from '../src/components/button/index.js';
-import { UmbilicalUtils } from '../src/umbilical/index.js';
+import { Counter } from '/src/components/counter/index.js';
+import { Display } from '/src/components/display/index.js';
+import { Button } from '/src/components/button/index.js';
+import { UmbilicalUtils } from '/src/umbilical/index.js';
 
 /**
  * Agent-style component discovery and composition
