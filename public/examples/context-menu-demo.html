@@ -354,7 +354,7 @@ menu.setItems([
 
         // Themed context menu
         let currentTheme = 'light';
-        let themedMenu = createThemedMenu(currentTheme);
+        let themedMenu = null;
 
         function createThemedMenu(theme) {
             if (themedMenu) {
@@ -386,6 +386,9 @@ menu.setItems([
                 }
             });
         }
+
+        // Initialize themed menu
+        themedMenu = createThemedMenu(currentTheme);
 
         function setTheme(theme) {
             currentTheme = theme;

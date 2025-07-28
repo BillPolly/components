@@ -74,7 +74,7 @@ export const ContextMenu = {
       style.id = styleId;
       style.textContent = `
         .umbilical-context-menu {
-          position: absolute;
+          position: fixed;
           z-index: 10000;
           min-width: 150px;
           max-width: 300px;
@@ -235,6 +235,11 @@ export const ContextMenu = {
         // Event handlers
         if (!item.disabled) {
           itemEl.addEventListener('mouseenter', () => {
+            console.log('ContextMenu: Item mouseenter triggered');
+            console.log('  - Item:', item.label);
+            console.log('  - Has subitems:', !!(item.subitems && item.subitems.length > 0));
+            console.log('  - Show delay:', showDelay);
+            
             clearTimers();
             
             // Update hovered item
@@ -247,18 +252,18 @@ export const ContextMenu = {
 
             // Handle submenu
             if (item.subitems && item.subitems.length > 0) {
+              console.log('ContextMenu: Setting up submenu timer');
               showTimer = setTimeout(() => {
+                console.log('ContextMenu: Submenu timer fired - creating submenu');
                 hideSubmenu();
                 
-                // Create submenu
+                // Create submenu with fixed positioning (viewport coordinates)
                 const itemRect = itemEl.getBoundingClientRect();
+                
+                // Create submenu temporarily to get dimensions
                 activeSubmenu = ContextMenu.create({
                   dom: dom,
                   items: item.subitems,
-                  position: {
-                    x: itemRect.right - 2,
-                    y: itemRect.top
-                  },
                   theme: theme,
                   showDelay: showDelay,
                   hideDelay: hideDelay,
@@ -271,16 +276,64 @@ export const ContextMenu = {
                   onItemHover: umbilical.onItemHover
                 });
                 
-                activeSubmenu.show();
-                
-                // Adjust position if off-screen
-                const submenuRect = activeSubmenu.element.getBoundingClientRect();
-                if (submenuRect.right > window.innerWidth) {
-                  activeSubmenu.setPosition({
-                    x: itemRect.left - submenuRect.width + 2,
-                    y: itemRect.top
-                  });
+                // Get submenu dimensions by temporarily showing it off-screen
+                activeSubmenu.element.style.visibility = 'hidden';
+                activeSubmenu.element.style.display = 'block';
+                if (!activeSubmenu.element.parentNode) {
+                  dom.appendChild(activeSubmenu.element);
                 }
+                const submenuRect = activeSubmenu.element.getBoundingClientRect();
+                activeSubmenu.element.style.display = 'none';
+                activeSubmenu.element.style.visibility = 'visible';
+                
+                // Calculate position using viewport coordinates (fixed positioning)
+                let submenuX = itemRect.right - 2; // Default: to the right with slight overlap
+                let submenuY = itemRect.top;
+                const margin = 5;
+                
+                // Check if submenu would go off right edge
+                if (submenuX + submenuRect.width > window.innerWidth - margin) {
+                  // Position to the left of the parent menu item
+                  submenuX = itemRect.left - submenuRect.width + 2;
+                }
+                
+                // Check if submenu would go off bottom edge
+                if (submenuY + submenuRect.height > window.innerHeight - margin) {
+                  // Move up to fit within viewport
+                  submenuY = window.innerHeight - submenuRect.height - margin;
+                }
+                
+                // Ensure submenu doesn't go off top or left edges 
+                if (submenuY < margin) {
+                  submenuY = margin;
+                }
+                if (submenuX < margin) {
+                  submenuX = margin;
+                }
+                
+                // Show submenu at calculated position
+                console.log('ContextMenu: Submenu positioning:');
+                console.log('  - Item rect (viewport coordinates):', itemRect);
+                console.log('  - Submenu dimensions:', { width: submenuRect.width, height: submenuRect.height });
+                console.log('  - Calculated position (fixed/viewport):', { x: submenuX, y: submenuY });
+                
+                activeSubmenu.show({
+                  x: submenuX,
+                  y: submenuY
+                });
+                
+                // Verify submenu was actually created and shown
+                const submenuFinalRect = activeSubmenu.element.getBoundingClientRect();
+                console.log('ContextMenu: Submenu final verification:');
+                console.log('  - Submenu element:', activeSubmenu.element);
+                console.log('  - Submenu visible:', activeSubmenu.isVisible);
+                console.log('  - Submenu final rect:', {
+                  left: submenuFinalRect.left,
+                  top: submenuFinalRect.top,
+                  right: submenuFinalRect.right,
+                  bottom: submenuFinalRect.bottom
+                });
+                console.log('  - Submenu parent:', activeSubmenu.element.parentNode);
               }, showDelay);
             } else {
               hideTimer = setTimeout(hideSubmenu, hideDelay);
@@ -298,15 +351,23 @@ export const ContextMenu = {
 
           itemEl.addEventListener('click', (e) => {
             e.stopPropagation();
+            console.log('ContextMenu: Item clicked:', item.label);
+            console.log('  - Has subitems:', !!(item.subitems && item.subitems.length > 0));
+            console.log('  - Has action:', !!item.action);
+            console.log('  - Has onItemSelect:', !!umbilical.onItemSelect);
             
             if (!item.subitems || item.subitems.length === 0) {
               instance.hide();
               if (item.action) {
+                console.log('  - Calling item.action');
                 item.action(item, instance);
               }
               if (umbilical.onItemSelect) {
+                console.log('  - Calling onItemSelect');
                 umbilical.onItemSelect(item, instance);
               }
+            } else {
+              console.log('  - Item has subitems, not executing action');
             }
           });
         }
@@ -355,6 +416,7 @@ export const ContextMenu = {
         }
 
         // Position menu
+        console.log('ContextMenu: Initial position:', position);
         element.style.left = `${position.x}px`;
         element.style.top = `${position.y}px`;
         element.style.display = 'block';
@@ -365,23 +427,61 @@ export const ContextMenu = {
 
         isVisible = true;
 
-        // Adjust position if off-screen
+        // Adjust position if off-screen (minimal adjustment to keep menu visible)
         const rect = element.getBoundingClientRect();
         const adjustedPos = { ...position };
+        const margin = 5; // Small margin from viewport edges
 
-        if (rect.right > window.innerWidth) {
-          adjustedPos.x = window.innerWidth - rect.width - 10;
+        // Only adjust if menu would actually be clipped
+        if (position.x + rect.width > window.innerWidth) {
+          // Move left just enough to fit, with small margin
+          adjustedPos.x = window.innerWidth - rect.width - margin;
         }
-        if (rect.bottom > window.innerHeight) {
-          adjustedPos.y = window.innerHeight - rect.height - 10;
+        if (position.y + rect.height > window.innerHeight) {
+          // Move up just enough to fit, with small margin
+          adjustedPos.y = window.innerHeight - rect.height - margin;
         }
-        if (adjustedPos.x < 0) adjustedPos.x = 10;
-        if (adjustedPos.y < 0) adjustedPos.y = 10;
+        
+        // Ensure menu doesn't go off the left/top edges
+        if (adjustedPos.x < margin) {
+          adjustedPos.x = margin;
+        }
+        if (adjustedPos.y < margin) {
+          adjustedPos.y = margin;
+        }
 
+        // Apply adjustments only if necessary
         if (adjustedPos.x !== position.x || adjustedPos.y !== position.y) {
+          console.log('ContextMenu: Adjusting position from', position, 'to', adjustedPos);
+          console.log('ContextMenu: Menu rect:', rect);
+          console.log('ContextMenu: Viewport size:', { width: window.innerWidth, height: window.innerHeight });
           element.style.left = `${adjustedPos.x}px`;
           element.style.top = `${adjustedPos.y}px`;
+        } else {
+          console.log('ContextMenu: No position adjustment needed');
         }
+
+        // Verify final DOM position
+        const finalRect = element.getBoundingClientRect();
+        const computedStyle = window.getComputedStyle(element);
+        console.log('ContextMenu: Final DOM verification:');
+        console.log('  - Element.style.left:', element.style.left);
+        console.log('  - Element.style.top:', element.style.top);
+        console.log('  - Computed style left:', computedStyle.left);
+        console.log('  - Computed style top:', computedStyle.top);
+        console.log('  - Final bounding rect:', {
+          left: finalRect.left,
+          top: finalRect.top,
+          right: finalRect.right,
+          bottom: finalRect.bottom,
+          width: finalRect.width,
+          height: finalRect.height
+        });
+        console.log('  - Parent element:', element.parentNode);
+        console.log('  - Element position relative to parent:', {
+          offsetLeft: element.offsetLeft,
+          offsetTop: element.offsetTop
+        });
 
         // Add event listeners
         document.addEventListener('click', handleDocumentClick);
@@ -471,6 +571,12 @@ export const ContextMenu = {
       
       triggerHandler = (e) => {
         e.preventDefault();
+        console.log('ContextMenu: Mouse event triggered');
+        console.log('  - Event type:', e.type);
+        console.log('  - Mouse coordinates:', { clientX: e.clientX, clientY: e.clientY });
+        console.log('  - Target element:', e.target);
+        console.log('  - Using coordinates directly (fixed positioning)');
+        
         instance.show({ x: e.clientX, y: e.clientY });
       };
       
