@@ -521,17 +521,10 @@ export class GridView {
     const row = this.element.querySelector(`tr[data-row-index="${rowIndex}"]`);
     if (row) {
       row.classList.add('dragging');
-      row.style.cssText += `
-        opacity: 0.7;
-        transform: translate3d(0, 0, 0) scale(1.02);
-        z-index: 1000;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-        cursor: grabbing !important;
-        background: #ffffff !important;
-        border: 2px solid #3b82f6;
-      `;
+      // Hide the original row completely - no space left behind
+      row.style.display = 'none';
       
-      // Create ghost placeholder
+      // Create ghost placeholder to show where the row came from
       this.createGhostPlaceholder(row, rowIndex);
     }
   }
@@ -545,12 +538,21 @@ export class GridView {
     
     const ghost = originalRow.cloneNode(true);
     ghost.className = 'ghost-placeholder';
+    
+    // Clear any dragging styles from the cloned element
+    ghost.classList.remove('dragging');
+    
+    // Reset all styles and apply only ghost styles
     ghost.style.cssText = `
       opacity: 0.3;
       background: #f8fafc !important;
       border: 2px dashed #cbd5e1;
       position: relative;
       pointer-events: none;
+      transform: none;
+      z-index: auto;
+      box-shadow: none;
+      cursor: auto;
     `;
     
     // Insert ghost after original row
@@ -561,12 +563,8 @@ export class GridView {
     const draggingRows = this.element.querySelectorAll('.dragging');
     draggingRows.forEach(row => {
       row.classList.remove('dragging');
-      row.style.cssText = row.style.cssText.replace(/opacity:[^;]*;?/g, '')
-                                           .replace(/transform:[^;]*;?/g, '')
-                                           .replace(/z-index:[^;]*;?/g, '')
-                                           .replace(/box-shadow:[^;]*;?/g, '')
-                                           .replace(/cursor:[^;]*;?/g, '')
-                                           .replace(/border:[^;]*;?/g, '');
+      // Restore display
+      row.style.display = '';
     });
     
     // Remove ghost placeholder

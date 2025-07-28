@@ -352,7 +352,6 @@ export class GridViewModel {
         }
         
         this.model.startDrag('row', rowIndex);
-        this.view.showRowDragFeedback(rowIndex);
         
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', rowIndex.toString());
@@ -375,8 +374,9 @@ export class GridViewModel {
         document.body.appendChild(dragImage);
         e.dataTransfer.setDragImage(dragImage, e.offsetX, e.offsetY);
         
-        // Clean up drag image after drag starts
+        // Hide the row and show ghost AFTER drag image is created
         setTimeout(() => {
+          this.view.showRowDragFeedback(rowIndex);
           document.body.removeChild(dragImage);
         }, 0);
         
