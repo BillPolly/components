@@ -250,11 +250,15 @@ export const Window = {
     documentHandlers.mousemove = (e) => {
       if (isDragging) {
         e.preventDefault();
-        const x = e.clientX - offsetX;
-        const y = e.clientY - offsetY;
+        
+        // Calculate new position
+        const parentRect = umbilical.dom.getBoundingClientRect();
+        const x = e.clientX - parentRect.left - offsetX;
+        const y = e.clientY - parentRect.top - offsetY;
 
-        const maxX = window.innerWidth - windowEl.offsetWidth;
-        const maxY = window.innerHeight - windowEl.offsetHeight;
+        // Apply boundaries relative to parent container
+        const maxX = parentRect.width - windowEl.offsetWidth;
+        const maxY = parentRect.height - windowEl.offsetHeight;
 
         windowEl.style.left = `${Math.min(Math.max(0, x), maxX)}px`;
         windowEl.style.top = `${Math.min(Math.max(0, y), maxY)}px`;
@@ -293,8 +297,11 @@ export const Window = {
         if (e.target === titleBar || e.target === titleElement) {
           e.preventDefault();
           isDragging = true;
-          offsetX = e.clientX - windowEl.getBoundingClientRect().left;
-          offsetY = e.clientY - windowEl.getBoundingClientRect().top;
+          
+          // Calculate offset from mouse position to window position
+          const rect = windowEl.getBoundingClientRect();
+          offsetX = e.clientX - rect.left;
+          offsetY = e.clientY - rect.top;
           
           // Set grabbing cursor
           document.body.style.cursor = 'grabbing';
