@@ -60,7 +60,9 @@ Components support three operational modes through the same `create()` function:
 - **ImageViewer** (`src/components/image-viewer/`): Image display with pan/zoom controls
 - **Grid** (`src/components/grid/`): Interactive data grid with MVVM architecture, supports table/attribute modes
 - **Field Editors** (`src/components/field-editors/`): Reusable input components (TextField, NumericField, BooleanField)
-- **Tree** (`src/components/tree/`): Hierarchical tree view component with drag & drop, expansion state management (in development)
+- **Tree** (`src/components/tree/`): Hierarchical tree view component with drag & drop, expansion state management
+- **Divider** (`src/components/divider/`): Draggable divider for resizing panes, supports vertical/horizontal orientations
+- **SimpleImage** (`src/components/simple-image/`): Minimal image display with configurable aspect ratio behavior
 
 ### Utilities
 
@@ -107,19 +109,52 @@ The test suite (`test/integration.test.js`) demonstrates composition patterns:
 
 ## Development Guidelines
 
+### AI Agent Workflow
+When building new components, follow this proven workflow:
+
+1. **Discovery First**: Use introspection mode on existing components to understand patterns
+2. **Choose Architecture**: Decide between simple approach vs MVVM based on complexity
+3. **Implement Three-Mode Pattern**: Always support introspection, validation, and instance modes
+4. **Test Incrementally**: Start with simple umbilicals, build up to complex scenarios
+5. **Integrate & Demo**: Add to examples page to demonstrate functionality
+
+### Component Architecture Decision Tree
+
+**Use Simple Approach** (single file like SimpleImage, Button):
+- Basic display or input components
+- Minimal state management
+- Simple user interactions
+- Stateless or nearly stateless
+
+**Use MVVM Approach** (like Grid, Tree, Divider):
+- Complex state management
+- Multiple interaction modes
+- Sophisticated UI behaviors
+- Rich user interactions (drag & drop, inline editing, etc.)
+
+**Key Principle**: MVVM is preferred for complex components within the umbilical approach - it provides internal organization while maintaining the clean external umbilical interface.
+
 ### Component Creation
 1. Always implement the three-mode pattern (introspection, validation, instance)
 2. Use `UmbilicalUtils.validateCapabilities()` for required dependency checking
 3. Components should be pure functions of their umbilical - no global state or side effects
 4. Support lifecycle hooks (`onMount`, `onDestroy`) when appropriate
+5. **Prefer MVVM architecture** for non-trivial components to maintain code organization
 
-### Testing
+### Testing Best Practices
 - Individual component tests focus on isolation and umbilical mocking
 - Integration tests verify component composition and data flow
 - Use `UmbilicalUtils.createMockUmbilical()` for test umbilicals
 - Test environment is jsdom with Jest ES modules support
+- **MVVM components**: Test through umbilical interface, not internal layers
 - Field editors have comprehensive integration tests showing composition patterns
 - Grid component has detailed tests for MVVM architecture and mode switching
+
+**Common Testing Pitfalls & Solutions**:
+- **jsdom limitations**: Mock `getBoundingClientRect()` manually instead of using jest.fn()
+- **Event handlers**: Use manual mock functions instead of jest.fn() for ES6 module compatibility
+- **Parameter naming**: Always check existing components for parameter conventions (e.g., `imageData` vs `imageUrl`)
+- **Cleanup**: Always test component destruction and event listener removal
 
 ### Complex Component Architecture
 For advanced components like Grid and Tree, the codebase uses internal MVVM patterns:
@@ -128,6 +163,57 @@ For advanced components like Grid and Tree, the codebase uses internal MVVM patt
 - **ViewModel**: Coordination layer (e.g., `GridViewModel.js`) - bridges Model and View, manages interactions
 
 These internal patterns maintain umbilical protocol externally while enabling sophisticated internal organization.
+
+### Component Integration Patterns
+
+**Successful Composition Examples**:
+
+```js
+// Real-time bidirectional data binding (Divider + Input)
+const divider = Divider.create({
+  dom: container,
+  onResize: (position) => {
+    inputElement.value = Math.round(position); // Update input
+    updateStatus(`Position: ${position}%`);
+  }
+});
+
+// Input updates divider in real-time
+inputElement.addEventListener('input', (e) => {
+  const position = parseInt(e.target.value);
+  divider.setPosition(position); // Triggers onResize callback
+});
+```
+
+```js
+// Component composition with different behaviors (Divider + Images)
+const leftImage = SimpleImage.create({
+  dom: leftPane,
+  src: 'image.jpg',
+  objectFit: 'contain' // Locked aspect ratio
+});
+
+const rightImage = SimpleImage.create({
+  dom: rightPane, 
+  src: 'image2.jpg',
+  objectFit: 'fill' // Unlocked aspect ratio
+});
+
+// Divider resizes both panes simultaneously
+const divider = Divider.create({
+  dom: container,
+  onResize: (position) => {
+    // Images automatically adapt to new pane sizes
+    updatePaneSizes(position);
+  }
+});
+```
+
+**Event Handler Patterns**:
+- Use arrow functions to maintain component scope
+- Always validate input before calling component methods
+- Implement cleanup in component destroy methods
+- Use setTimeout for DOM updates that need to happen after current event cycle
 
 ### File Organization
 ```
@@ -162,5 +248,96 @@ docs/                   # Protocol design documentation
 - The protocol is designed as "assembly language" for component systems
 - Server runs Express serving static files from `public/` directory
 - Jest configuration uses experimental VM modules for ES6 support
+- **MVVM is preferred** for complex components within the umbilical approach
 - Complex components like Grid use internal MVVM patterns while maintaining umbilical protocol externally
 - Field editors demonstrate reusable input patterns that can be composed within larger components
+
+## Quick Reference for AI Agents
+
+### Three-Mode Component Template
+```js
+export const MyComponent = {
+  create(umbilical) {
+    // 1. Introspection mode
+    if (umbilical.describe) {
+      const requirements = UmbilicalUtils.createRequirements();
+      requirements.add('dom', 'HTMLElement', 'Parent DOM element');
+      requirements.add('data', 'any', 'Component data (optional)');
+      umbilical.describe(requirements);
+      return;
+    }
+
+    // 2. Validation mode
+    if (umbilical.validate) {
+      return umbilical.validate({
+        hasDomElement: umbilical.dom && umbilical.dom.nodeType === Node.ELEMENT_NODE
+      });
+    }
+
+    // 3. Instance creation mode
+    UmbilicalUtils.validateCapabilities(umbilical, ['dom'], 'MyComponent');
+    
+    // Component implementation...
+    const instance = {
+      // Public API methods
+      destroy() {
+        // Cleanup logic
+        if (umbilical.onDestroy) {
+          umbilical.onDestroy(instance);
+        }
+      }
+    };
+
+    if (umbilical.onMount) {
+      umbilical.onMount(instance);
+    }
+
+    return instance;
+  }
+};
+```
+
+### Common Umbilical Patterns
+```js
+// Standard parameters
+dom: HTMLElement           // Required: Parent container
+theme: 'light' | 'dark'   // Optional: Visual theme
+disabled: boolean         // Optional: Disabled state
+
+// Event callbacks
+onMount: (instance) => {}     // Component created
+onDestroy: (instance) => {}   // Component destroyed
+onChange: (value, instance) => {}  // Value changed
+onError: (error) => {}       // Error occurred
+
+// Lifecycle management
+instance.destroy()           // Cleanup component
+instance.enable/disable()    // Toggle state
+instance.setTheme(theme)     // Update appearance
+```
+
+### Testing Template
+```js
+describe('MyComponent', () => {
+  test('follows umbilical protocol', () => {
+    // 1. Test introspection
+    let requirements = null;
+    MyComponent.create({
+      describe: (reqs) => { requirements = reqs.getAll(); }
+    });
+    expect(requirements.dom).toBeDefined();
+
+    // 2. Test validation
+    const validation = MyComponent.create({
+      validate: (checks) => checks
+    });
+    expect(validation.hasDomElement).toBeDefined();
+
+    // 3. Test instance creation
+    const container = document.createElement('div');
+    const instance = MyComponent.create({ dom: container });
+    expect(instance).toBeDefined();
+    expect(instance.destroy).toBeInstanceOf(Function);
+  });
+});
+```
