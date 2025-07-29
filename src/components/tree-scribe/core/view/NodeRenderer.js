@@ -4,6 +4,11 @@
 
 export class NodeRenderer {
   constructor(rendererRegistry) {
+    console.log('[NodeRenderer] Constructor called with registry:', {
+      hasRegistry: !!rendererRegistry,
+      registryType: rendererRegistry ? rendererRegistry.constructor.name : 'none',
+      hasGetRenderer: rendererRegistry ? typeof rendererRegistry.getRenderer === 'function' : false
+    });
     this.registry = rendererRegistry;
     this.destroyed = false;
     this.nodeElements = new Map(); // nodeId -> DOM element
@@ -161,14 +166,25 @@ export class NodeRenderer {
    * @private
    */
   _renderNodeContent(contentArea, nodeData) {
+    console.log('[NodeRenderer] Rendering content for node:', {
+      nodeId: nodeData.id,
+      title: nodeData.title,
+      contentType: nodeData.contentType,
+      hasContent: !!nodeData.content,
+      contentLength: nodeData.content ? nodeData.content.length : 0
+    });
+    
     try {
       // Get appropriate renderer
       const renderer = this.registry.getRenderer(nodeData.contentType);
+      console.log('[NodeRenderer] Selected renderer:', renderer ? renderer.constructor.name : 'none');
       
       if (renderer) {
         renderer.render(nodeData.content, contentArea);
+        console.log('[NodeRenderer] Content rendered successfully');
       } else {
         // Fallback to error renderer
+        console.warn('[NodeRenderer] No renderer found for content type:', nodeData.contentType);
         this.errorRenderer.render('No renderer available', contentArea);
       }
       
@@ -176,7 +192,7 @@ export class NodeRenderer {
       this._addContentEventListeners(contentArea, nodeData.id);
       
     } catch (error) {
-      console.warn('Content rendering failed:', error);
+      console.warn('[NodeRenderer] Content rendering failed:', error);
       this.errorRenderer.render('Rendering error', contentArea);
     }
   }

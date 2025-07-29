@@ -46,6 +46,8 @@ import { MemoryManager } from './features/performance/MemoryManager.js';
 import { AccessibilityManager } from './features/accessibility/AccessibilityManager.js';
 import { ExportManager } from './features/export/ExportManager.js';
 import { RendererRegistry } from './features/rendering/RendererRegistry.js';
+import { PlaintextRenderer } from './features/rendering/renderers/PlaintextRenderer.js';
+import { MarkdownRenderer } from './features/rendering/renderers/MarkdownRenderer.js';
 
 export class TreeScribeInstance {
   /**
@@ -205,10 +207,32 @@ export class TreeScribeInstance {
    * @private
    */
   _registerCustomRenderers() {
+    console.log('[TreeScribe] Registering renderers...');
+    
+    // Register default renderers
+    const plaintextRenderer = new PlaintextRenderer();
+    const plaintextRegistered = this.rendererRegistry.register(plaintextRenderer);
+    console.log('[TreeScribe] PlaintextRenderer registered:', plaintextRegistered);
+    
+    const markdownRenderer = new MarkdownRenderer({
+      theme: this.options.theme || 'light'
+    });
+    const markdownRegistered = this.rendererRegistry.register(markdownRenderer);
+    console.log('[TreeScribe] MarkdownRenderer registered:', markdownRegistered);
+    
+    // Set plaintext as fallback
+    this.rendererRegistry.setFallbackRenderer(plaintextRenderer);
+    console.log('[TreeScribe] PlaintextRenderer set as fallback');
+    
+    // Log registry state
+    console.log('[TreeScribe] Registered renderers:', this.rendererRegistry.getRegisteredRenderers());
+    console.log('[TreeScribe] Supported content types:', this.rendererRegistry.getSupportedContentTypes());
+    
+    // Register custom renderers from options
     if (this.options.renderers) {
       Object.entries(this.options.renderers).forEach(([name, renderer]) => {
         if (typeof renderer === 'object' && renderer.render) {
-          this.rendererRegistry.register(name, renderer);
+          this.rendererRegistry.register(renderer);
         }
       });
     }

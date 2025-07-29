@@ -88,10 +88,17 @@ export class TreeScribeModel {
    * @private
    */
   _buildTreeFromObject(obj, parent = null) {
+    console.log('[TreeScribeModel] Building node from object:', {
+      title: obj.title,
+      contentType: obj.contentType,
+      hasContent: !!obj.content
+    });
+    
     const node = new TreeNode({
       id: obj.id,
       title: obj.title,
       description: obj.content,
+      contentType: obj.contentType,
       metadata: obj.metadata
     });
 

@@ -2,7 +2,7 @@
  * YamlProcessor - Handles YAML parsing and normalization
  */
 
-import { parse as parseYaml } from 'yaml';
+import { parse as parseYaml } from '/lib/yaml';
 
 export class YamlProcessor {
   /**
@@ -44,10 +44,20 @@ export class YamlProcessor {
    * @private
    */
   static _normalizeStructure(obj, parentId = null) {
+    const detectedType = obj.type || (obj.content && typeof obj.content === 'string' && obj.content.includes('#') ? 'markdown' : 'plaintext');
+    console.log('[YamlProcessor] Processing node:', {
+      title: obj.title,
+      hasContent: !!obj.content,
+      providedType: obj.type,
+      detectedType: detectedType,
+      contentPreview: obj.content ? obj.content.substring(0, 50) + '...' : 'no content'
+    });
+    
     const node = {
       id: obj.id || this._generateId(),
       title: obj.title || 'Untitled',
       content: obj.description || obj.content || '',
+      contentType: detectedType,
       children: [],
       parentId,
       metadata: obj.metadata || {}
@@ -96,6 +106,7 @@ export class YamlProcessor {
           id: this._generateId(),
           title: child,
           content: '',
+          contentType: 'plaintext',
           children: [],
           parentId,
           metadata: {}

@@ -21,9 +21,7 @@ export class TreeScribeView {
     this.eventListeners = [];
 
     // Create NodeRenderer instance
-    this.nodeRenderer = new NodeRenderer(this.container, {
-      rendererRegistry: this.options.rendererRegistry
-    });
+    this.nodeRenderer = new NodeRenderer(this.options.rendererRegistry);
 
     this._initializeDOM();
     this._attachEventListeners();
@@ -143,12 +141,43 @@ export class TreeScribeView {
    * @private
    */
   _attachEventListeners() {
-    // Note: In full implementation, these would be connected to the ViewModel
-    // For now, just storing references for cleanup
-    this.eventListeners = [
-      // Search input events would be attached here
-      // Control button events would be attached here
-    ];
+    // Add click handler for expand/collapse arrows
+    const handleNodeClick = (event) => {
+      const arrow = event.target.closest('.node-arrow');
+      const header = event.target.closest('.node-header');
+      
+      if (arrow || header) {
+        const nodeElement = event.target.closest('.tree-node');
+        if (nodeElement) {
+          const nodeId = nodeElement.getAttribute('data-node-id');
+          if (nodeId) {
+            // Toggle the node
+            if (this.onNodeToggle) {
+              this.onNodeToggle(nodeId);
+            }
+            
+            // Update arrow rotation
+            const arrowEl = nodeElement.querySelector('.node-arrow');
+            if (arrowEl) {
+              arrowEl.classList.toggle('expanded');
+            }
+            
+            // Update node state
+            nodeElement.classList.toggle('expanded');
+            nodeElement.classList.toggle('collapsed');
+          }
+        }
+      }
+    };
+    
+    if (this.elements.treeContainer) {
+      this.elements.treeContainer.addEventListener('click', handleNodeClick);
+      this.eventListeners.push({
+        element: this.elements.treeContainer,
+        event: 'click',
+        handler: handleNodeClick
+      });
+    }
   }
 
   /**
@@ -211,7 +240,7 @@ export class TreeScribeView {
     nodeElement.setAttribute('data-node-id', node.id);
     
     // Apply state classes
-    if (node.expanded) {
+    if (node.expanded || node.state?.expanded) {
       nodeElement.classList.add('expanded');
     } else {
       nodeElement.classList.add('collapsed');
@@ -227,20 +256,73 @@ export class TreeScribeView {
       nodeElement.style.marginLeft = `${node.depth * 20}px`;
     }
     
+    // Create header with expand/collapse control
+    const headerElement = document.createElement('div');
+    headerElement.className = 'node-header';
+    
+    // Add expand/collapse arrow if node has children
+    console.log('[TreeScribeView] Creating node element for:', {
+      title: node.title,
+      hasChildren: !!node.children,
+      childrenLength: node.children ? node.children.length : 0,
+      children: node.children
+    });
+    
+    if (node.children && node.children.length > 0) {
+      console.log(`[TreeScribeView] Adding arrow to node "${node.title}" with ${node.children.length} children`);
+      const arrowElement = document.createElement('span');
+      arrowElement.className = 'node-arrow';
+      arrowElement.innerHTML = '▶'; // Right-pointing triangle
+      arrowElement.setAttribute('role', 'button');
+      arrowElement.setAttribute('aria-label', node.expanded ? 'Collapse' : 'Expand');
+      arrowElement.setAttribute('tabindex', '0');
+      headerElement.appendChild(arrowElement);
+      
+      // Rotate arrow if expanded
+      if (node.expanded || node.state?.expanded) {
+        arrowElement.classList.add('expanded');
+      }
+    } else {
+      console.log(`[TreeScribeView] No arrow for node "${node.title}" - children: ${node.children}, length: ${node.children ? node.children.length : 0}`);
+    }
+    
     // Create title element
-    const titleElement = document.createElement('div');
+    const titleElement = document.createElement('span');
     titleElement.className = 'node-title';
     titleElement.textContent = node.title;
+    headerElement.appendChild(titleElement);
+    
+    // Add header to node
+    nodeElement.appendChild(headerElement);
     
     // Create content element if content exists
     if (node.content) {
       const contentElement = document.createElement('div');
       contentElement.className = 'node-content';
-      contentElement.textContent = node.content;
-      nodeElement.appendChild(titleElement);
+      
+      // Use NodeRenderer to render content based on contentType
+      if (this.nodeRenderer) {
+        console.log('[TreeScribeView] Using NodeRenderer for content');
+        this.nodeRenderer._renderNodeContent(contentElement, node);
+      } else {
+        console.log('[TreeScribeView] No NodeRenderer available, using plain text');
+        contentElement.textContent = node.content;
+      }
+      
       nodeElement.appendChild(contentElement);
-    } else {
-      nodeElement.appendChild(titleElement);
+    }
+    
+    // Render child nodes if they exist
+    if (node.children && node.children.length > 0) {
+      const childrenContainer = document.createElement('div');
+      childrenContainer.className = 'node-children';
+      
+      node.children.forEach(childNode => {
+        const childElement = this._createNodeElement(childNode);
+        childrenContainer.appendChild(childElement);
+      });
+      
+      nodeElement.appendChild(childrenContainer);
     }
     
     return nodeElement;

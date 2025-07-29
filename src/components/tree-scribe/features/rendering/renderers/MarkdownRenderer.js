@@ -2,8 +2,8 @@
  * MarkdownRenderer - Renders markdown content with syntax highlighting and interactive features
  */
 
-import MarkdownIt from 'markdown-it';
-import hljs from 'highlight.js';
+import MarkdownIt from '/lib/markdown-it';
+import hljs from '/lib/highlight.js';
 import { BaseRenderer } from './PlaintextRenderer.js';
 
 export class MarkdownRenderer extends BaseRenderer {
@@ -140,6 +140,12 @@ export class MarkdownRenderer extends BaseRenderer {
    * Render markdown content into container
    */
   render(content, container) {
+    console.log('[MarkdownRenderer] render() called with:', {
+      contentLength: content ? content.length : 0,
+      contentPreview: content ? content.substring(0, 100) + '...' : 'no content',
+      containerTagName: container ? container.tagName : 'no container'
+    });
+    
     // Validate container
     if (!container) {
       throw new Error('Container is required for rendering');
@@ -164,6 +170,11 @@ export class MarkdownRenderer extends BaseRenderer {
       
       // Handle content
       const processedContent = this._processContent(content);
+      console.log('[MarkdownRenderer] Processed content:', {
+        length: processedContent.length,
+        preview: processedContent.substring(0, 200) + '...',
+        hasHTMLTags: processedContent.includes('<')
+      });
       contentDiv.innerHTML = processedContent;
       
       // Add interactive features
@@ -171,8 +182,14 @@ export class MarkdownRenderer extends BaseRenderer {
       
       container.appendChild(contentDiv);
       
+      console.log('[MarkdownRenderer] DOM update complete:', {
+        containerChildren: container.children.length,
+        containerHTML: container.innerHTML.substring(0, 200) + '...',
+        containerInDOM: document.body.contains(container)
+      });
       return container;
     } catch (error) {
+      console.error('[MarkdownRenderer] Render failed:', error);
       throw new Error(`Failed to render markdown content: ${error.message}`);
     }
   }
@@ -189,9 +206,17 @@ export class MarkdownRenderer extends BaseRenderer {
     
     // Convert to string if needed
     const markdownContent = String(content);
+    console.log('[MarkdownRenderer] Processing markdown:', {
+      contentLength: markdownContent.length,
+      contentPreview: markdownContent.substring(0, 100) + '...'
+    });
     
     // Render markdown to HTML
     const html = this.md.render(markdownContent);
+    console.log('[MarkdownRenderer] markdown-it output:', {
+      htmlLength: html.length,
+      htmlPreview: html.substring(0, 200) + '...'
+    });
     
     // Sanitize HTML for security
     return this._sanitizeHtml(html);

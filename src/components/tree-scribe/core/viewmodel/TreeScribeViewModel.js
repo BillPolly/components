@@ -58,6 +58,14 @@ export class TreeScribeViewModel {
     this.modelEventListeners.push(
       this.model.on('modelChanged', modelChangeHandler)
     );
+    
+    // Connect view's toggle handler to ViewModel
+    if (this.view) {
+      this.view.onNodeToggle = (nodeId) => {
+        console.log('[TreeScribeViewModel] Node toggle requested:', nodeId);
+        this.executeCommand('toggleNode', { nodeId });
+      };
+    }
   }
 
   /**
@@ -205,8 +213,11 @@ export class TreeScribeViewModel {
    * @private
    */
   _prepareNodesForView() {
-    const allNodes = this.model.getAllNodes();
-    return allNodes.map(node => ({
+    // Only return root node as array - let view handle recursive rendering
+    if (!this.model.rootNode) return [];
+    
+    // Convert node to view-friendly format recursively
+    const prepareNode = (node) => ({
       id: node.id,
       title: node.title,
       content: node.content,
@@ -215,8 +226,10 @@ export class TreeScribeViewModel {
       visible: node.state?.visible !== false,
       depth: node.getDepth(),
       isLeaf: node.isLeaf(),
-      children: node.children.map(child => child.id)
-    }));
+      children: node.children.map(child => prepareNode(child))
+    });
+    
+    return [prepareNode(this.model.rootNode)];
   }
 
   // Command implementations

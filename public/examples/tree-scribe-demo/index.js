@@ -3,8 +3,8 @@
  * Demonstrates the full TreeScribe functionality with a comprehensive UI
  */
 
-import { TreeScribeInstance } from '../../../src/components/tree-scribe/TreeScribe.js';
-import { UmbilicalUtils } from '../../../src/umbilical/index.js';
+import { TreeScribeInstance } from '/src/components/tree-scribe/TreeScribe.js';
+import { UmbilicalUtils } from '/src/umbilical/index.js';
 
 export const TreeScribeDemo = {
   create(umbilical) {
@@ -375,6 +375,80 @@ class TreeScribeDemoInstance {
         height: 100%;
       }
       
+      /* Tree node styles */
+      .tree-node {
+        margin: 4px 0;
+        user-select: none;
+      }
+      
+      .node-header {
+        display: flex;
+        align-items: center;
+        padding: 4px 0;
+        cursor: pointer;
+      }
+      
+      .node-header:hover {
+        background-color: rgba(102, 126, 234, 0.1);
+        border-radius: 4px;
+      }
+      
+      .node-arrow {
+        display: inline-block;
+        width: 20px;
+        text-align: center;
+        font-size: 12px;
+        color: #666;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+        flex-shrink: 0;
+      }
+      
+      .node-arrow.expanded {
+        transform: rotate(90deg);
+      }
+      
+      .node-arrow:hover {
+        color: #667eea;
+      }
+      
+      .node-title {
+        font-weight: 500;
+        color: #2c3e50;
+        padding-left: 4px;
+        flex-grow: 1;
+      }
+      
+      .node-content {
+        margin-left: 24px;
+        padding: 8px 0;
+      }
+      
+      .node-children {
+        margin-left: 20px;
+      }
+      
+      .tree-node.collapsed .node-content {
+        display: none;
+      }
+      
+      .tree-node.collapsed .node-children {
+        display: none;
+      }
+      
+      /* Dark theme adjustments */
+      .tree-scribe-theme-dark .node-title {
+        color: #e1e4e8;
+      }
+      
+      .tree-scribe-theme-dark .node-arrow {
+        color: #8b949e;
+      }
+      
+      .tree-scribe-theme-dark .node-header:hover {
+        background-color: rgba(110, 118, 129, 0.2);
+      }
+      
       .demo-footer {
         background: #2c3e50;
         color: white;
@@ -389,6 +463,149 @@ class TreeScribeDemoInstance {
       
       .footer-stats span {
         margin: 0 5px;
+      }
+      
+      /* Markdown styles */
+      .markdown-content {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.6;
+        color: #333;
+      }
+      
+      .markdown-content h1, .markdown-content h2, .markdown-content h3, 
+      .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+        margin-top: 1em;
+        margin-bottom: 0.5em;
+        font-weight: 600;
+      }
+      
+      .markdown-content h1 { font-size: 2em; }
+      .markdown-content h2 { font-size: 1.5em; }
+      .markdown-content h3 { font-size: 1.25em; }
+      
+      .markdown-content p {
+        margin-bottom: 1em;
+      }
+      
+      .markdown-content a {
+        color: #667eea;
+        text-decoration: none;
+      }
+      
+      .markdown-content a:hover {
+        text-decoration: underline;
+      }
+      
+      .markdown-content code {
+        background: #f4f4f4;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-family: 'Courier New', monospace;
+        font-size: 0.9em;
+      }
+      
+      .markdown-content pre {
+        background: #f8f8f8;
+        border: 1px solid #e1e4e8;
+        border-radius: 6px;
+        padding: 16px;
+        overflow-x: auto;
+        margin: 1em 0;
+      }
+      
+      .markdown-content pre code {
+        background: none;
+        padding: 0;
+      }
+      
+      .markdown-content blockquote {
+        border-left: 4px solid #dfe2e5;
+        padding-left: 1em;
+        margin-left: 0;
+        color: #6a737d;
+      }
+      
+      .markdown-content ul, .markdown-content ol {
+        margin-bottom: 1em;
+        padding-left: 2em;
+      }
+      
+      .markdown-content table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1em 0;
+      }
+      
+      .markdown-content th, .markdown-content td {
+        border: 1px solid #dfe2e5;
+        padding: 8px 12px;
+      }
+      
+      .markdown-content th {
+        background: #f6f8fa;
+        font-weight: 600;
+      }
+      
+      .markdown-content img {
+        max-width: 100%;
+        height: auto;
+      }
+      
+      .markdown-content .code-container {
+        position: relative;
+        margin: 1em 0;
+      }
+      
+      .markdown-content .copy-button {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+      
+      .markdown-content .code-container:hover .copy-button {
+        opacity: 1;
+      }
+      
+      .markdown-content .copy-button:hover {
+        background: #764ba2;
+      }
+      
+      /* Dark theme for markdown */
+      .tree-scribe-theme-dark .markdown-content {
+        color: #e1e4e8;
+      }
+      
+      .tree-scribe-theme-dark .markdown-content code {
+        background: #3a3a3a;
+        color: #e1e4e8;
+      }
+      
+      .tree-scribe-theme-dark .markdown-content pre {
+        background: #2d2d2d;
+        border-color: #444;
+      }
+      
+      .tree-scribe-theme-dark .markdown-content blockquote {
+        border-color: #444;
+        color: #8b949e;
+      }
+      
+      .tree-scribe-theme-dark .markdown-content th {
+        background: #3a3a3a;
+      }
+      
+      .tree-scribe-theme-dark .markdown-content th,
+      .tree-scribe-theme-dark .markdown-content td {
+        border-color: #444;
       }
       
       /* Responsive design */
@@ -485,7 +702,9 @@ class TreeScribeDemoInstance {
     // Clear search
     this.container.querySelector('#clearSearchBtn').addEventListener('click', () => {
       const searchInput = this.container.querySelector('#searchInput');
-      searchInput.value = '';
+      if (searchInput) {
+        searchInput.value = '';
+      }
       if (this.treeScribe) {
         this.treeScribe.clearSearch();
         this._updateSearchResults(0);
@@ -1253,49 +1472,80 @@ children:
     content: |
       ## Basic Text Formatting
       
-      **Bold text** and __also bold text__
-      
-      *Italic text* and _also italic text_
-      
-      ***Bold and italic*** combined
-      
-      ~~Strikethrough text~~
-      
-      \`Inline code\` formatting
-      
-      > This is a blockquote
-      > It can span multiple lines
+      Learn how to format text in Markdown with various styling options.
     type: markdown
+    children:
+      - title: Bold and Italic
+        content: |
+          **Bold text** and __also bold text__
+          
+          *Italic text* and _also italic text_
+          
+          ***Bold and italic*** combined
+        type: markdown
+      - title: Other Formatting
+        content: |
+          ~~Strikethrough text~~
+          
+          \`Inline code\` formatting
+          
+          > This is a blockquote
+          > It can span multiple lines
+        type: markdown
     
   - title: Code Examples
     content: |
       ## Code Blocks
       
-      ### JavaScript Example
-      \`\`\`javascript
-      const treeScribe = new TreeScribeInstance({
-        dom: container,
-        theme: 'dark',
-        onMount: (instance) => {
-          console.log('TreeScribe loaded!');
-        }
-      });
-      
-      await treeScribe.loadYaml(yamlContent);
-      \`\`\`
-      
-      ### Python Example
-      \`\`\`python
-      import yaml
-      
-      def load_document(file_path):
-          with open(file_path, 'r') as file:
-              return yaml.safe_load(file)
-      
-      doc = load_document('example.yaml')
-      print(f"Document title: {doc['title']}")
-      \`\`\`
+      TreeScribe supports syntax highlighting for multiple programming languages.
     type: markdown
+    children:
+      - title: JavaScript Example
+        content: |
+          ### JavaScript
+          \`\`\`javascript
+          const treeScribe = new TreeScribeInstance({
+            dom: container,
+            theme: 'dark',
+            onMount: (instance) => {
+              console.log('TreeScribe loaded!');
+            }
+          });
+          
+          await treeScribe.loadYaml(yamlContent);
+          \`\`\`
+        type: markdown
+      - title: Python Example
+        content: |
+          ### Python
+          \`\`\`python
+          import yaml
+          
+          def load_document(file_path):
+              with open(file_path, 'r') as file:
+                  return yaml.safe_load(file)
+          
+          doc = load_document('example.yaml')
+          print(f"Document title: {doc['title']}")
+          \`\`\`
+        type: markdown
+      - title: Other Languages
+        content: |
+          ### CSS
+          \`\`\`css
+          .tree-scribe {
+            font-family: system-ui;
+            line-height: 1.6;
+          }
+          \`\`\`
+          
+          ### SQL
+          \`\`\`sql
+          SELECT * FROM documents
+          WHERE content LIKE '%markdown%'
+          ORDER BY created_at DESC;
+          \`\`\`
+        type: markdown
     
   - title: Lists and Tables
     content: |

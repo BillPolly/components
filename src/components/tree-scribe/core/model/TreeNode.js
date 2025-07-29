@@ -7,15 +7,22 @@ export class TreeNode {
     this.id = data.id || this._generateId();
     this.title = data.title || 'Untitled';
     this.content = data.description || data.content || '';
-    this.contentType = this._detectContentType(this.content);
+    this.contentType = data.contentType || this._detectContentType(this.content);
     this.children = [];
     this.parent = null;
     this.metadata = data.metadata || {};
     this.state = {
-      expanded: false,
+      expanded: true, // Start expanded by default
       visible: true,
       searchHighlight: false
     };
+    
+    console.log('[TreeNode] Created node:', {
+      id: this.id,
+      title: this.title,
+      contentType: this.contentType,
+      hasContent: !!this.content
+    });
   }
 
   /**

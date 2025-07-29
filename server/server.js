@@ -34,6 +34,24 @@ codemirrorPaths.forEach(modulePath => {
   });
 });
 
+// Serve the yaml module
+app.get('/lib/yaml', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile('yaml.esm.js', { root: path.join(__dirname, '..', 'public', 'lib') });
+});
+
+// Serve markdown-it module
+app.get('/lib/markdown-it', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile('markdown-it.esm.js', { root: path.join(__dirname, '..', 'public', 'lib') });
+});
+
+// Serve highlight.js module
+app.get('/lib/highlight.js', (req, res) => {
+  res.type('application/javascript');
+  res.sendFile('highlight.esm.js', { root: path.join(__dirname, '..', 'public', 'lib') });
+});
+
 // Default route to serve index.html
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
