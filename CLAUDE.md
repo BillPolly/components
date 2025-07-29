@@ -28,6 +28,13 @@ Visit `http://localhost:3600/examples/` for interactive demos and component exam
 
 **Alternative port**: Use `PORT=xxxx npm start` to run server on a different port.
 
+### Server Architecture
+The development server (`server/server.js`) is an Express application that:
+- Serves static files from `public/` directory
+- Serves source files from `src/` for ES6 module imports
+- Includes bundled CodeMirror libraries via `/lib/codemirror/*` routes
+- Supports CodeMirror 6 with pre-bundled language extensions and themes
+
 ## Core Architecture
 
 ### Umbilical Component Protocol
@@ -63,6 +70,9 @@ Components support three operational modes through the same `create()` function:
 - **Tree** (`src/components/tree/`): Hierarchical tree view component with drag & drop, expansion state management
 - **Divider** (`src/components/divider/`): Draggable divider for resizing panes, supports vertical/horizontal orientations
 - **SimpleImage** (`src/components/simple-image/`): Minimal image display with configurable aspect ratio behavior
+- **CodeEditor** (`src/components/code-editor/`): Full-featured code editor with syntax highlighting, built on CodeMirror 6
+- **Tabs** (`src/components/tabs/`): Tab container component with MVVM architecture for organizing content
+- **GraphEditor** (`src/components/graph-editor/`): Sophisticated node-graph editor with dual SVG/Canvas rendering and interaction state machine
 
 ### Utilities
 
@@ -251,6 +261,9 @@ docs/                   # Protocol design documentation
 - **MVVM is preferred** for complex components within the umbilical approach
 - Complex components like Grid use internal MVVM patterns while maintaining umbilical protocol externally
 - Field editors demonstrate reusable input patterns that can be composed within larger components
+- **CodeMirror Integration**: CodeEditor component uses bundled CodeMirror 6 with pre-configured language support and themes
+- **Graph Editor**: Uses Dagre layout engine and dual rendering modes (SVG for small graphs, Canvas for performance)
+- **Component Discovery**: New components should be added to `/public/examples/` for testing and demonstration
 
 ## Quick Reference for AI Agents
 
