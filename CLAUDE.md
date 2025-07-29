@@ -344,6 +344,29 @@ docs/                   # Protocol design documentation
 - **Hot Swappable**: Replace components with identical interfaces
 - **Framework Agnostic**: Components can use any internal implementation
 
+## Development Plan Progress Tracking
+
+**CRITICAL REQUIREMENT**: When working on components with development plans (like TreeScribe), you MUST update the development plan progress:
+
+1. **Mark completed steps with ✅**: When any phase step is finished, update the corresponding checkbox with a GREEN TICK (✅)
+2. **Update progress percentages**: Recalculate and update the overall progress percentage as phases complete
+3. **Update phase status**: Mark phases as completed when all their steps are done
+4. **Update milestone status**: Mark testing milestones as complete when verification passes
+
+**Example Progress Updates**:
+```markdown
+### 1.1 Project Setup & Basic Structure
+- [✅] Create comprehensive test structure with Jest configuration
+- [✅] Set up ES6 module support for tests
+- [ ] Create mock umbilical utilities for testing
+- [ ] Verify all directory structures are in place
+
+**Phase 1 - Foundation**: ⬜ 2/32 steps complete (6%)
+**Overall Progress**: ⬜ 2/160 total steps complete (1%)
+```
+
+**Location**: Always update `src/components/[component-name]/docs/development-plan.md`
+
 ## Important Notes
 
 - All components use ES6 modules - ensure proper import/export syntax
