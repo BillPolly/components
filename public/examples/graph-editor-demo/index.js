@@ -2,10 +2,10 @@
  * GraphEditorDemo - A complete demo application as an umbilical component
  */
 
-import { GraphEditor } from '../graph-editor/index.js';
-import { SelectTool } from '../graph-editor/tools/SelectTool.js';
-import { PanTool } from '../graph-editor/tools/PanTool.js';
-import { UmbilicalUtils } from '../../umbilical/index.js';
+import { GraphEditor } from '../../../src/components/graph-editor/index.js';
+import { SelectTool } from '../../../src/components/graph-editor/tools/SelectTool.js';
+import { PanTool } from '../../../src/components/graph-editor/tools/PanTool.js';
+import { UmbilicalUtils } from '../../../src/umbilical/index.js';
 
 export const GraphEditorDemo = {
   create(umbilical) {
@@ -20,7 +20,7 @@ export const GraphEditorDemo = {
     // 2. Validation mode
     if (umbilical.validate) {
       const checks = {
-        hasDomElement: umbilical.dom && umbilical.dom.nodeType === Node.ELEMENT_NODE
+        hasDomElement: !!(umbilical.dom && umbilical.dom.nodeType === Node.ELEMENT_NODE)
       };
       return umbilical.validate(checks);
     }
@@ -424,6 +424,7 @@ class GraphEditorDemoInstance {
       const coordinator = this.editor.getViewModel().getEventCoordinator();
       coordinator.setActiveTool('select');
       this._updateToolButtons('select');
+      this._updateStatus();
       this._log('Switched to select tool');
     });
     
@@ -432,21 +433,32 @@ class GraphEditorDemoInstance {
       const coordinator = this.editor.getViewModel().getEventCoordinator();
       coordinator.setActiveTool('pan');
       this._updateToolButtons('pan');
+      this._updateStatus();
       this._log('Switched to pan tool');
     });
     
     // Action buttons
     this.container.querySelector('#addNodeBtn').addEventListener('click', () => {
       try {
-        if (!this.editor) return;
+        if (!this.editor) {
+          this._log('No editor available', 'error');
+          return;
+        }
         
+        const model = this.editor.getModel();
         const viewModel = this.editor.getViewModel();
+        const view = this.editor.getView();
+        
+        this._log(`Before add - Model nodes: ${model.getSceneGraph().getAllNodes().length}`);
+        
         const center = {
           x: 400 + Math.random() * 100 - 50,
           y: 300 + Math.random() * 100 - 50
         };
         
         const nodeId = `node${this.nodeIdCounter++}`;
+        this._log(`Attempting to add node ${nodeId} at position ${center.x}, ${center.y}`);
+        
         const result = viewModel.executeCommandType('addNode', {
           nodeData: {
             id: nodeId,
@@ -456,12 +468,25 @@ class GraphEditorDemoInstance {
           }
         });
         
+        this._log(`Command result: ${result}`);
+        this._log(`After add - Model nodes: ${model.getSceneGraph().getAllNodes().length}`);
+        
+        // Force render and check if it worked
+        this._log('Forcing render...');
+        viewModel.render();
+        
+        // SVG Inspector utility
+        this._inspectSVG();
+        
         if (result) {
-          this._log(`Added node: ${nodeId}`);
+          this._log(`✅ Successfully added node: ${nodeId}`);
+        } else {
+          this._log(`❌ Failed to add node: ${nodeId}`, 'error');
         }
         
       } catch (error) {
         this._log(`Add node error: ${error.message}`, 'error');
+        console.error(error);
       }
     });
     
@@ -492,6 +517,7 @@ class GraphEditorDemoInstance {
       if (confirm('Clear all nodes and edges?')) {
         this.editor.getModel().clear();
         this.nodeIdCounter = 1;
+        this._updateStatus();
         this._log('Graph cleared');
       }
     });
@@ -599,6 +625,62 @@ class GraphEditorDemoInstance {
     entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
     logEl.appendChild(entry);
     logEl.scrollTop = logEl.scrollHeight;
+  }
+  
+  _inspectSVG() {
+    const svg = this.container.querySelector('#editorContainer svg');
+    if (!svg) {
+      this._log('❌ No SVG element found', 'error');
+      return;
+    }
+    
+    const report = {
+      svg: {
+        width: svg.getAttribute('width'),
+        height: svg.getAttribute('height'),
+        childrenCount: svg.children.length,
+        innerHTML: svg.innerHTML.length
+      },
+      mainGroup: null,
+      nodes: [],
+      edges: []
+    };
+    
+    // Find main group
+    const mainGroup = svg.querySelector('g[transform^="matrix"]');
+    if (mainGroup) {
+      report.mainGroup = {
+        transform: mainGroup.getAttribute('transform'),
+        childrenCount: mainGroup.children.length
+      };
+      
+      // Count nodes and edges in main group
+      report.nodes = Array.from(mainGroup.querySelectorAll('g.node')).map(node => ({
+        id: node.getAttribute('data-node-id'),
+        transform: node.getAttribute('transform'),
+        hasRect: !!node.querySelector('rect'),
+        hasText: !!node.querySelector('text')
+      }));
+      
+      report.edges = Array.from(mainGroup.querySelectorAll('g[data-edge-id]')).map(edge => ({
+        id: edge.getAttribute('data-edge-id'),
+        hasPath: !!edge.querySelector('path')
+      }));
+    }
+    
+    // Log summary
+    this._log(`🔍 SVG Report: ${report.nodes.length} nodes, ${report.edges.length} edges, main group children: ${report.mainGroup?.childrenCount || 0}`);
+    
+    if (report.nodes.length === 0) {
+      this._log('❌ No nodes found in SVG!', 'error');
+      this._log(`SVG innerHTML preview: ${svg.innerHTML.substring(0, 200)}...`);
+    } else {
+      this._log(`✅ Nodes: ${report.nodes.map(n => n.id).join(', ')}`);
+    }
+    
+    // Make report available globally for debugging
+    window.svgReport = report;
+    return report;
   }
   
   // Public API

@@ -116,6 +116,7 @@ export class SVGRenderer extends Renderer {
     const { isHovered = false, isSelected = false, isDragPreview = false, previewPosition = null } = options;
     const id = `node-${node.getId()}`;
     let g = this._getOrCreateElement(id, 'g');
+    g.setAttribute('class', 'node');
     g.setAttribute('data-node-id', node.getId());
     
     // Store reverse mapping
@@ -203,7 +204,11 @@ export class SVGRenderer extends Renderer {
       selection.setAttribute('stroke-dasharray', '5,5');
       
       if (!selection.parentNode) {
-        g.insertBefore(selection, g.firstChild);
+        if (g.firstChild) {
+          g.insertBefore(selection, g.firstChild);
+        } else {
+          g.appendChild(selection);
+        }
       }
     } else {
       // Remove selection if exists
@@ -331,7 +336,11 @@ export class SVGRenderer extends Renderer {
       textBg.setAttribute('rx', '2');
       
       if (!textBg.parentNode) {
-        g.insertBefore(textBg, text);
+        if (text.parentNode === g) {
+          g.insertBefore(textBg, text);
+        } else {
+          g.appendChild(textBg);
+        }
       }
       
       if (!text.parentNode) {
@@ -340,18 +349,33 @@ export class SVGRenderer extends Renderer {
       
       // Update background size after text is rendered
       setTimeout(() => {
-        const bbox = text.getBBox();
-        textBg.setAttribute('x', bbox.x - 2);
-        textBg.setAttribute('y', bbox.y - 2);
-        textBg.setAttribute('width', bbox.width + 4);
-        textBg.setAttribute('height', bbox.height + 4);
+        try {
+          const bbox = text.getBBox ? text.getBBox() : {
+            x: 0, y: -12, width: label.length * 8, height: 16
+          };
+          textBg.setAttribute('x', bbox.x - 2);
+          textBg.setAttribute('y', bbox.y - 2);
+          textBg.setAttribute('width', bbox.width + 4);
+          textBg.setAttribute('height', bbox.height + 4);
+        } catch (e) {
+          // Fallback for jsdom - approximate text size
+          const approxWidth = label.length * 8;
+          textBg.setAttribute('x', -2);
+          textBg.setAttribute('y', -14);
+          textBg.setAttribute('width', approxWidth + 4);
+          textBg.setAttribute('height', 20);
+        }
       }, 0);
     }
     
     // Add to main group if not already there
     if (!g.parentNode) {
       // Insert edges before nodes
-      this.mainGroup.insertBefore(g, this.mainGroup.firstChild);
+      if (this.mainGroup.firstChild) {
+        this.mainGroup.insertBefore(g, this.mainGroup.firstChild);
+      } else {
+        this.mainGroup.appendChild(g);
+      }
     }
   }
 
@@ -518,7 +542,11 @@ export class SVGRenderer extends Renderer {
     let defs = this.svg.querySelector('defs');
     if (!defs) {
       defs = document.createElementNS(this.svgNS, 'defs');
-      this.svg.insertBefore(defs, this.svg.firstChild);
+      if (this.svg.firstChild) {
+        this.svg.insertBefore(defs, this.svg.firstChild);
+      } else {
+        this.svg.appendChild(defs);
+      }
     }
     
     // Check if preview arrow marker exists
