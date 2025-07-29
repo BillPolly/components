@@ -151,20 +151,112 @@ When building new components, follow this proven workflow:
 4. Support lifecycle hooks (`onMount`, `onDestroy`) when appropriate
 5. **Prefer MVVM architecture** for non-trivial components to maintain code organization
 
-### Testing Best Practices
+### Complete UI Testability Through Umbilical Protocol
+
+**The umbilical protocol enables 100% programmatic testing of user interfaces** - every user interaction can be tested through the component's umbilical interface without browser automation tools.
+
+#### Real Functional Testing Examples
+
+```js
+// Test actual user workflows programmatically
+test('should add node and render it in SVG DOM', async () => {
+  // Create component through umbilical
+  const demo = GraphEditorDemo.create({ dom: container });
+  
+  // Get actual UI elements (not mocked!)
+  const addButton = container.querySelector('#addNodeBtn');
+  const svg = container.querySelector('svg');
+  
+  // Programmatically trigger user action
+  addButton.click();
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
+  // Verify actual visual result in DOM
+  const nodeElements = svg.querySelectorAll('g.node');
+  expect(nodeElements.length).toBe(6); // 5 initial + 1 new
+  
+  // Verify node structure and positioning
+  const newNode = nodeElements[nodeElements.length - 1];
+  expect(newNode.querySelector('rect')).toBeTruthy();
+  expect(newNode.querySelector('text')).toBeTruthy();
+  expect(newNode.getAttribute('transform')).toMatch(/translate\(\d+,\s*\d+\)/);
+});
+```
+
+#### Why This Works
+
+1. **jsdom provides complete DOM**: Full SVG/HTML DOM with proper element querying
+2. **No mocking required**: Test actual button clicks, DOM updates, event handlers
+3. **Real rendering pipeline**: Components render actual SVG/HTML elements in test environment
+4. **Complete user workflows**: Test multi-step interactions (add → delete → undo → redo)
+
+#### Advanced Testing Patterns
+
+```js
+// Test complete user workflow with real UI interactions
+test('should handle complete editing workflow', async () => {
+  const demo = GraphEditorDemo.create({ dom: container });
+  const svg = container.querySelector('svg');
+  
+  // 1. Add node
+  container.querySelector('#addNodeBtn').click();
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
+  // 2. Select node (simulate click on SVG element)
+  const nodeRect = svg.querySelector('g.node:last-child rect');
+  nodeRect.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  
+  // 3. Delete selected node
+  container.querySelector('#deleteBtn').click();
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
+  // 4. Undo deletion
+  container.querySelector('#undoBtn').click();
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
+  // Verify final state matches expectations
+  expect(svg.querySelectorAll('g.node').length).toBe(6);
+});
+```
+
+#### Testing Best Practices
 - Individual component tests focus on isolation and umbilical mocking
-- Integration tests verify component composition and data flow
-- Use `UmbilicalUtils.createMockUmbilical()` for test umbilicals
-- Test environment is jsdom with Jest ES modules support
+- **Functional tests verify actual user-visible behavior** through DOM inspection
+- Use `UmbilicalUtils.createMockUmbilical()` for unit tests only
+- Test environment is jsdom with Jest ES modules support providing full DOM
 - **MVVM components**: Test through umbilical interface, not internal layers
-- Field editors have comprehensive integration tests showing composition patterns
-- Grid component has detailed tests for MVVM architecture and mode switching
+- **Always verify DOM changes**: Check that UI updates match user expectations
+- **Test complete workflows**: Multi-step user interactions through actual UI elements
+
+#### SVG/Canvas Testing Utilities
+
+```js
+// Example SVG inspection utility for complex graphics testing
+_inspectSVG() {
+  const svg = container.querySelector('svg');
+  const report = {
+    nodes: Array.from(svg.querySelectorAll('g.node')).map(node => ({
+      id: node.getAttribute('data-node-id'),
+      transform: node.getAttribute('transform'),
+      hasRect: !!node.querySelector('rect'),
+      hasText: !!node.querySelector('text')
+    })),
+    edges: Array.from(svg.querySelectorAll('g[data-edge-id]')).map(edge => ({
+      id: edge.getAttribute('data-edge-id'),
+      hasPath: !!edge.querySelector('path')
+    }))
+  };
+  return report;
+}
+```
 
 **Common Testing Pitfalls & Solutions**:
 - **jsdom limitations**: Mock `getBoundingClientRect()` manually instead of using jest.fn()
 - **Event handlers**: Use manual mock functions instead of jest.fn() for ES6 module compatibility
 - **Parameter naming**: Always check existing components for parameter conventions (e.g., `imageData` vs `imageUrl`)
 - **Cleanup**: Always test component destruction and event listener removal
+- **Async rendering**: Always await render cycles with `setTimeout()` when testing DOM updates
+- **Real vs fake tests**: Verify actual DOM elements, not just internal data structures
 
 ### Complex Component Architecture
 For advanced components like Grid and Tree, the codebase uses internal MVVM patterns:
@@ -246,7 +338,8 @@ docs/                   # Protocol design documentation
 ## Key Benefits
 
 - **Perfect Isolation**: Components cannot access anything outside their umbilical
-- **Universal Testing**: Mock one object to test any component
+- **Complete UI Testability**: Every user interaction can be programmatically tested through the umbilical interface - no browser automation required
+- **Universal Testing**: Mock one object to test any component; jsdom provides full DOM for functional testing
 - **Agent-Friendly**: Programmatic discovery and composition
 - **Hot Swappable**: Replace components with identical interfaces
 - **Framework Agnostic**: Components can use any internal implementation

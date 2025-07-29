@@ -349,451 +349,50 @@
   </div>
 
   <script type="module">
-    import { GraphEditor } from '/src/components/graph-editor/index.js';
-    import { SelectTool } from '/src/components/graph-editor/tools/SelectTool.js';
-    import { ConnectTool } from '/src/components/graph-editor/tools/ConnectTool.js';
+    import { NodeTypesDemo } from '/examples/node-types-demo/index.js';
     
-    // Node type definitions
-    const nodeTypes = {
-      process: {
-        shape: 'rectangle',
-        color: '#3b82f6',
-        icon: '□',
-        defaultSize: { width: 120, height: 60 }
-      },
-      decision: {
-        shape: 'diamond',
-        color: '#f59e0b',
-        icon: '◇',
-        defaultSize: { width: 100, height: 100 }
-      },
-      data: {
-        shape: 'parallelogram',
-        color: '#10b981',
-        icon: '▱',
-        defaultSize: { width: 120, height: 60 }
-      },
-      terminal: {
-        shape: 'ellipse',
-        color: '#6366f1',
-        icon: '●',
-        defaultSize: { width: 100, height: 50 }
-      },
-      document: {
-        shape: 'rectangle',
-        color: '#8b5cf6',
-        icon: '📄',
-        defaultSize: { width: 100, height: 80 }
-      },
-      database: {
-        shape: 'cylinder',
-        color: '#ef4444',
-        icon: '🗄️',
-        defaultSize: { width: 80, height: 100 }
-      }
-    };
-    
-    // Initialize editor
-    let editor = null;
-    let nodeIdCounter = 1;
-    let selectedNodeId = null;
-    
-    function createEditor() {
-      const container = document.getElementById('editorContainer');
+    try {
+      console.log('Creating NodeTypes Demo component...');
       
-      editor = GraphEditor.create({
+      const container = document.querySelector('.container').parentElement;
+      // Clear existing content
+      container.innerHTML = '';
+      
+      const demo = NodeTypesDemo.create({
         dom: container,
-        onModelChange: (type, data) => {
-          updateStatus();
-          
-          // Handle selection changes for properties panel
-          if (type === 'selectionChanged') {
-            updatePropertiesPanel();
-          }
-        },
-        onSelectionChange: (selection) => {
-          selectedNodeId = selection.length === 1 ? selection[0] : null;
-          updatePropertiesPanel();
-          updateToolbarState();
-        },
-        onHistoryChange: () => {
-          updateToolbarState();
-        },
         onMount: (instance) => {
-          setupTools();
-          setupCustomRendering();
-          createInitialGraph();
-          updateStatus();
+          console.log('✅ NodeTypes Demo mounted successfully');
+          console.log('Editor instance:', instance.getEditor());
+          
+          // Make demo available globally for debugging
+          window.demo = instance;
+          window.editor = instance.getEditor();
+          
+          console.log('Demo available as window.demo');
+          console.log('Editor available as window.editor');
+        },
+        onDestroy: (instance) => {
+          console.log('NodeTypes Demo destroyed');
         }
       });
-    }
-    
-    // Setup tools
-    function setupTools() {
-      const coordinator = editor.getViewModel().getEventCoordinator();
       
-      coordinator.registerTool('select', new SelectTool());
-      coordinator.registerTool('connect', new ConnectTool());
-      coordinator.setActiveTool('select');
-    }
-    
-    // Custom node rendering based on type
-    function setupCustomRendering() {
-      const view = editor.getView();
-      const originalRender = view.render.bind(view);
+      console.log('✅ NodeTypes Demo created successfully');
       
-      // Override render to customize node appearance
-      view.render = function() {
-        originalRender();
-        
-        // Customize SVG nodes based on type
-        if (view.getRendererType() === 'svg') {
-          const svg = view.getContainer().querySelector('svg');
-          const nodes = editor.getModel().getSceneGraph().getAllNodes();
-          
-          nodes.forEach(node => {
-            if (node.getId() === 'root') return;
-            
-            const nodeData = node.getData() || {};
-            const nodeType = nodeData.type || 'process';
-            const typeConfig = nodeTypes[nodeType];
-            
-            if (typeConfig) {
-              const nodeEl = svg.querySelector(`[data-node-id="${node.getId()}"]`);
-              if (nodeEl) {
-                // Update shape
-                const rect = nodeEl.querySelector('rect');
-                if (rect) {
-                  rect.setAttribute('fill', typeConfig.color);
-                  rect.setAttribute('rx', nodeType === 'terminal' ? '25' : '4');
-                  
-                  // Add shape-specific styling
-                  if (nodeType === 'decision') {
-                    // Transform to diamond
-                    const cx = parseFloat(rect.getAttribute('x')) + parseFloat(rect.getAttribute('width')) / 2;
-                    const cy = parseFloat(rect.getAttribute('y')) + parseFloat(rect.getAttribute('height')) / 2;
-                    rect.setAttribute('transform', `rotate(45 ${cx} ${cy})`);
-                  }
-                }
-                
-                // Add icon if not present
-                let icon = nodeEl.querySelector('.node-icon');
-                if (!icon && typeConfig.icon) {
-                  const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                  text.setAttribute('class', 'node-icon');
-                  text.setAttribute('x', parseFloat(rect.getAttribute('x')) + parseFloat(rect.getAttribute('width')) / 2);
-                  text.setAttribute('y', parseFloat(rect.getAttribute('y')) + 20);
-                  text.setAttribute('text-anchor', 'middle');
-                  text.setAttribute('font-size', '20');
-                  text.setAttribute('fill', 'white');
-                  text.setAttribute('pointer-events', 'none');
-                  text.textContent = typeConfig.icon;
-                  nodeEl.appendChild(text);
-                }
-              }
-            }
-          });
-        }
-      };
-    }
-    
-    // Create initial demo graph
-    function createInitialGraph() {
-      const model = editor.getModel();
+      // Make demo available globally
+      window.nodeTypesDemo = demo;
       
-      // Start node
-      const startNode = model.addNode({
-        id: 'start',
-        position: { x: 100, y: 50 },
-        label: 'Start',
-        size: { width: 100, height: 50 },
-        data: { type: 'terminal' }
-      });
+    } catch (error) {
+      console.error('❌ Failed to create NodeTypes Demo:', error);
       
-      // Process node
-      const processNode = model.addNode({
-        id: 'process1',
-        position: { x: 250, y: 50 },
-        label: 'Process Data',
-        size: { width: 120, height: 60 },
-        data: { type: 'process' }
-      });
-      
-      // Decision node
-      const decisionNode = model.addNode({
-        id: 'decision1',
-        position: { x: 400, y: 50 },
-        label: 'Valid?',
-        size: { width: 100, height: 100 },
-        data: { type: 'decision' }
-      });
-      
-      // Data nodes
-      const dataNode1 = model.addNode({
-        id: 'data1',
-        position: { x: 300, y: 200 },
-        label: 'Error Log',
-        size: { width: 120, height: 60 },
-        data: { type: 'data' }
-      });
-      
-      const dataNode2 = model.addNode({
-        id: 'data2',
-        position: { x: 500, y: 200 },
-        label: 'Results',
-        size: { width: 120, height: 60 },
-        data: { type: 'data' }
-      });
-      
-      // Connect nodes
-      model.addEdge({ source: 'start', target: 'process1' });
-      model.addEdge({ source: 'process1', target: 'decision1' });
-      model.addEdge({ source: 'decision1', target: 'data1', label: 'No' });
-      model.addEdge({ source: 'decision1', target: 'data2', label: 'Yes' });
-    }
-    
-    // Handle drag and drop
-    function setupDragAndDrop() {
-      const nodeTypes = document.querySelectorAll('.node-type');
-      let dragGhost = null;
-      
-      nodeTypes.forEach(nodeTypeEl => {
-        nodeTypeEl.addEventListener('dragstart', (e) => {
-          e.dataTransfer.effectAllowed = 'copy';
-          e.dataTransfer.setData('nodeType', nodeTypeEl.dataset.nodeType);
-          nodeTypeEl.classList.add('dragging');
-          
-          // Create custom drag image
-          dragGhost = nodeTypeEl.cloneNode(true);
-          dragGhost.classList.add('drag-ghost');
-          document.body.appendChild(dragGhost);
-          e.dataTransfer.setDragImage(dragGhost, 50, 25);
-        });
-        
-        nodeTypeEl.addEventListener('dragend', () => {
-          nodeTypeEl.classList.remove('dragging');
-          if (dragGhost) {
-            dragGhost.remove();
-            dragGhost = null;
-          }
-        });
-      });
-      
-      const editorContainer = document.getElementById('editorContainer');
-      
-      editorContainer.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
-      });
-      
-      editorContainer.addEventListener('drop', (e) => {
-        e.preventDefault();
-        
-        const nodeType = e.dataTransfer.getData('nodeType');
-        if (!nodeType) return;
-        
-        const typeConfig = nodeTypes[nodeType];
-        const rect = editorContainer.getBoundingClientRect();
-        
-        // Calculate position in graph coordinates
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        // Create new node
-        const nodeData = {
-          id: `node${nodeIdCounter++}`,
-          position: { x, y },
-          label: `${nodeType.charAt(0).toUpperCase() + nodeType.slice(1)} ${nodeIdCounter}`,
-          size: typeConfig.defaultSize,
-          data: { type: nodeType }
-        };
-        
-        editor.getViewModel().executeCommandType('addNode', { nodeData });
-      });
-    }
-    
-    // Update status bar
-    function updateStatus() {
-      if (!editor) return;
-      
-      const model = editor.getModel();
-      const nodes = model.getSceneGraph().getAllNodes().filter(n => n.getId() !== 'root');
-      const edges = model.getEdges();
-      
-      document.getElementById('nodeCount').textContent = nodes.length;
-      document.getElementById('edgeCount').textContent = edges.length;
-      document.getElementById('currentTool').textContent = 
-        editor.getViewModel().getEventCoordinator().getActiveTool();
-    }
-    
-    // Update toolbar state
-    function updateToolbarState() {
-      if (!editor) return;
-      
-      const viewModel = editor.getViewModel();
-      const hasSelection = viewModel.getSelection().length > 0;
-      
-      document.getElementById('deleteBtn').disabled = !hasSelection;
-      document.getElementById('undoBtn').disabled = !viewModel.canUndo();
-      document.getElementById('redoBtn').disabled = !viewModel.canRedo();
-    }
-    
-    // Update properties panel
-    function updatePropertiesPanel() {
-      const propertiesContent = document.getElementById('propertiesContent');
-      
-      if (!selectedNodeId || !editor) {
-        propertiesContent.innerHTML = '<div class="no-selection">Select a node to edit properties</div>';
-        return;
-      }
-      
-      const node = editor.getModel().getSceneGraph().getNodeById(selectedNodeId);
-      if (!node) return;
-      
-      const nodeData = node.getData() || {};
-      const nodeType = nodeData.type || 'process';
-      
-      propertiesContent.innerHTML = `
-        <div class="property">
-          <label>ID</label>
-          <input type="text" value="${node.getId()}" disabled>
-        </div>
-        <div class="property">
-          <label>Label</label>
-          <input type="text" id="nodeLabel" value="${node.getLabel() || ''}">
-        </div>
-        <div class="property">
-          <label>Type</label>
-          <select id="nodeType">
-            ${Object.keys(nodeTypes).map(type => 
-              `<option value="${type}" ${type === nodeType ? 'selected' : ''}>${type.charAt(0).toUpperCase() + type.slice(1)}</option>`
-            ).join('')}
-          </select>
-        </div>
-        <div class="property">
-          <label>X Position</label>
-          <input type="number" id="nodeX" value="${Math.round(node.getPosition().x)}">
-        </div>
-        <div class="property">
-          <label>Y Position</label>
-          <input type="number" id="nodeY" value="${Math.round(node.getPosition().y)}">
+      // Show error in UI
+      document.body.innerHTML = `
+        <div style="padding: 20px; color: red; font-family: monospace;">
+          <h2>Error Loading NodeTypes Demo</h2>
+          <pre>${error.message}</pre>
+          <p>Check the browser console for more details.</p>
         </div>
       `;
-      
-      // Add event listeners
-      document.getElementById('nodeLabel').addEventListener('input', (e) => {
-        node.setLabel(e.target.value);
-        editor.getView().render();
-      });
-      
-      document.getElementById('nodeType').addEventListener('change', (e) => {
-        const newType = e.target.value;
-        const newData = { ...nodeData, type: newType };
-        node.setData(newData);
-        
-        // Update size based on type
-        const typeConfig = nodeTypes[newType];
-        if (typeConfig && typeConfig.defaultSize) {
-          node.setSize(typeConfig.defaultSize.width, typeConfig.defaultSize.height);
-        }
-        
-        editor.getView().render();
-      });
-      
-      document.getElementById('nodeX').addEventListener('input', (e) => {
-        const x = parseFloat(e.target.value);
-        if (!isNaN(x)) {
-          node.setPosition(x, node.getPosition().y);
-          editor.getView().render();
-        }
-      });
-      
-      document.getElementById('nodeY').addEventListener('input', (e) => {
-        const y = parseFloat(e.target.value);
-        if (!isNaN(y)) {
-          node.setPosition(node.getPosition().x, y);
-          editor.getView().render();
-        }
-      });
     }
-    
-    // Tool buttons
-    document.getElementById('selectBtn').addEventListener('click', () => {
-      editor.getViewModel().getEventCoordinator().setActiveTool('select');
-      document.getElementById('selectBtn').classList.add('primary');
-      document.getElementById('connectBtn').classList.remove('primary');
-      updateStatus();
-    });
-    
-    document.getElementById('connectBtn').addEventListener('click', () => {
-      editor.getViewModel().getEventCoordinator().setActiveTool('connect');
-      document.getElementById('connectBtn').classList.add('primary');
-      document.getElementById('selectBtn').classList.remove('primary');
-      updateStatus();
-    });
-    
-    document.getElementById('deleteBtn').addEventListener('click', () => {
-      const selection = editor.getViewModel().getSelection();
-      selection.forEach(nodeId => {
-        editor.getViewModel().executeCommandType('removeNode', { nodeId });
-      });
-    });
-    
-    document.getElementById('undoBtn').addEventListener('click', () => {
-      editor.getViewModel().undo();
-    });
-    
-    document.getElementById('redoBtn').addEventListener('click', () => {
-      editor.getViewModel().redo();
-    });
-    
-    document.getElementById('autoLayoutBtn').addEventListener('click', () => {
-      editor.getViewModel().applyLayout('dagre');
-    });
-    
-    document.getElementById('exportBtn').addEventListener('click', () => {
-      const data = editor.getModel().toJSON();
-      const json = JSON.stringify(data, null, 2);
-      
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'graph-export.json';
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-    
-    document.getElementById('rendererSelect').addEventListener('change', async (e) => {
-      await editor.getView().setRendererType(e.target.value);
-      setupCustomRendering(); // Re-apply custom rendering
-    });
-    
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if (!editor) return;
-      
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        editor.getViewModel().undo();
-      }
-      
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-        e.preventDefault();
-        editor.getViewModel().redo();
-      }
-      
-      if (e.key === 'Delete') {
-        const selection = editor.getViewModel().getSelection();
-        selection.forEach(nodeId => {
-          editor.getViewModel().executeCommandType('removeNode', { nodeId });
-        });
-      }
-    });
-    
-    // Initialize
-    createEditor();
-    setupDragAndDrop();
   </script>
 </body>
 </html>
