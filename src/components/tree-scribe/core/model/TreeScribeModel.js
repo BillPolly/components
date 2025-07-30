@@ -1,9 +1,18 @@
 /**
  * TreeScribeModel - Core data model for TreeScribe component
+ * Enhanced with multi-format support via ParserRegistry
  */
 
 import { TreeNode } from './TreeNode.js';
 import { YamlProcessor } from './YamlProcessor.js';
+import { ParserRegistry } from '../../features/parsing/ParserRegistry.js';
+import { YamlParser } from '../../features/parsing/parsers/YamlParser.js';
+import { JsonParser } from '../../features/parsing/parsers/JsonParser.js';
+import { MarkdownParser } from '../../features/parsing/parsers/MarkdownParser.js';
+import { HtmlParser } from '../../features/parsing/parsers/HtmlParser.js';
+import { JavaScriptParser } from '../../features/parsing/parsers/JavaScriptParser.js';
+import { XmlParser } from '../../features/parsing/parsers/XmlParser.js';
+import { FormatDetector } from '../../features/parsing/FormatDetector.js';
 
 export class TreeScribeModel {
   constructor() {
@@ -11,36 +20,70 @@ export class TreeScribeModel {
     this.nodeIndex = new Map(); // Fast node lookup by ID
     this.metadata = {};
     this.eventListeners = new Map();
+    
+    // Initialize parser registry and format detector
+    this.parserRegistry = new ParserRegistry();
+    this.formatDetector = new FormatDetector();
+    this._initializeParsers();
   }
 
   /**
-   * Load YAML content and build tree structure
+   * Initialize default parsers
+   * @private
    */
-  loadYaml(yamlString) {
+  _initializeParsers() {
+    // Register all core parsers
+    const yamlParser = new YamlParser();
+    const jsonParser = new JsonParser();
+    const markdownParser = new MarkdownParser();
+    const htmlParser = new HtmlParser();
+    const jsParser = new JavaScriptParser();
+    const xmlParser = new XmlParser();
+    
+    this.parserRegistry.registerParser(yamlParser);
+    this.parserRegistry.registerParser(jsonParser);
+    this.parserRegistry.registerParser(markdownParser);
+    this.parserRegistry.registerParser(htmlParser);
+    this.parserRegistry.registerParser(jsParser);
+    this.parserRegistry.registerParser(xmlParser);
+    
+    // YAML remains the default for backward compatibility
+    this.parserRegistry.setDefaultParser('YamlParser');
+  }
+
+  /**
+   * Load content with automatic format detection or specified format
+   * @param {string} content - Document content
+   * @param {Object} options - Load options
+   * @returns {Object} Load result with success status and node count
+   */
+  load(content, options = {}) {
     try {
       // Validate input
-      if (yamlString === null || yamlString === undefined || typeof yamlString !== 'string') {
-        throw new Error('Invalid YAML content: must be a string');
+      if (content === null || content === undefined || typeof content !== 'string') {
+        throw new Error('Invalid content: must be a string');
       }
 
-      // Handle empty string case
-      if (yamlString.trim() === '') {
-        const parsed = { title: 'Untitled', content: '' };
-        this.rootNode = this._buildTreeFromObject(parsed);
-        this._buildNodeIndex();
-        this._emit('modelChanged', { 
-          type: 'loaded', 
-          rootNode: this.rootNode 
-        });
-        return { success: true, nodeCount: this.getNodeCount() };
+      // Get parser based on content and hints
+      const parser = this.parserRegistry.getParser(content, {
+        format: options.format,
+        mimeType: options.mimeType,
+        filename: options.filename,
+        ...options.hints
+      });
+
+      if (!parser) {
+        throw new Error(`No parser found for content. Supported formats: ${this.parserRegistry.getFormats().join(', ')}`);
       }
 
-      // Parse YAML to normalized structure
-      const parsed = YamlProcessor.parse(yamlString);
+      console.log(`[TreeScribeModel] Using parser: ${parser.getName()}`);
+
+      // Parse content
+      const parsed = parser.parse(content, options.parserOptions || {});
       
       // Validate parsed result
       if (!parsed || typeof parsed !== 'object') {
-        throw new Error('Invalid YAML structure: must contain valid document structure');
+        throw new Error('Invalid parsed structure: must contain valid document structure');
       }
 
       // Build tree from parsed data
@@ -48,8 +91,17 @@ export class TreeScribeModel {
       
       // Validate root node was created
       if (!this.rootNode) {
-        throw new Error('Failed to create tree structure from YAML content');
+        throw new Error('Failed to create tree structure from content');
       }
+      
+      // Store metadata about the load
+      this.metadata = {
+        ...this.metadata,
+        sourceFormat: parsed.sourceFormat || parser.getSupportedFormats()[0],
+        parser: parser.getName(),
+        loadTime: new Date().toISOString(),
+        nodeCount: this.getNodeCount()
+      };
       
       // Create node index for fast lookup
       this._buildNodeIndex();
@@ -57,30 +109,36 @@ export class TreeScribeModel {
       // Emit change event
       this._emit('modelChanged', { 
         type: 'loaded', 
-        rootNode: this.rootNode 
+        rootNode: this.rootNode,
+        metadata: this.metadata
       });
       
-      return { success: true, nodeCount: this.getNodeCount() };
+      return { 
+        success: true, 
+        nodeCount: this.getNodeCount(),
+        format: this.metadata.sourceFormat,
+        parser: this.metadata.parser
+      };
       
     } catch (error) {
-      console.error('Failed to load YAML:', error);
+      console.error('Failed to load content:', error);
       
       // Clean up any partial state
       this.rootNode = null;
       this.nodeIndex.clear();
+      this.metadata = {};
       
-      // Create more specific error messages
-      let errorMessage = error.message;
-      if (error.message.includes('YAML')) {
-        errorMessage = `YAML parsing error: ${error.message}`;
-      } else if (error.message.includes('structure')) {
-        errorMessage = `Document structure error: ${error.message}`;
-      } else {
-        errorMessage = `Failed to load document: ${error.message}`;
-      }
-      
-      throw new Error(errorMessage);
+      throw error;
     }
+  }
+
+  /**
+   * Load YAML content and build tree structure
+   * @deprecated Use load() method instead
+   */
+  loadYaml(yamlString) {
+    // Use the new load method with explicit YAML format
+    return this.load(yamlString, { format: 'yaml' });
   }
 
   /**
@@ -315,6 +373,63 @@ export class TreeScribeModel {
   }
 
   /**
+   * Register a parser with the model
+   * @param {BaseParser} parser - Parser instance
+   */
+  registerParser(parser) {
+    this.parserRegistry.registerParser(parser);
+  }
+
+  /**
+   * Get supported formats
+   * @returns {string[]} Array of format identifiers
+   */
+  getSupportedFormats() {
+    return this.parserRegistry.getFormats();
+  }
+
+  /**
+   * Detect format of content
+   * @param {string} content - Document content
+   * @param {Object} hints - Format hints
+   * @returns {string|null} Detected format or null
+   */
+  detectFormat(content, hints = {}) {
+    // Use the format detector for more intelligent detection
+    const detection = this.formatDetector.detect(content, hints);
+    
+    if (detection.format && this.formatDetector.isReliable(detection)) {
+      return detection.format;
+    }
+    
+    // Fallback to parser registry detection
+    const parser = this.parserRegistry.getParser(content, hints);
+    if (parser) {
+      return parser.getSupportedFormats()[0];
+    }
+    
+    return null;
+  }
+
+  /**
+   * Get detailed format analysis
+   * @param {string} content - Document content
+   * @param {Object} hints - Format hints
+   * @returns {Object} Detailed format analysis
+   */
+  analyzeFormat(content, hints = {}) {
+    return this.formatDetector.detect(content, hints);
+  }
+
+  /**
+   * Get parser capabilities
+   * @returns {Object} Map of parser capabilities
+   */
+  getParserCapabilities() {
+    return this.parserRegistry.getAllCapabilities();
+  }
+
+  /**
    * Clean up model
    */
   destroy() {
@@ -322,5 +437,6 @@ export class TreeScribeModel {
     this.nodeIndex.clear();
     this.eventListeners.clear();
     this.metadata = {};
+    this.parserRegistry.clear();
   }
 }

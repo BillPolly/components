@@ -38,10 +38,15 @@ class TreeScribeDemoInstance {
     this.treeScribe = null;
     this.currentDocument = 'simple-guide';
     this.searchTimeout = null;
+    this.pluginManager = null;
     
     // Create the demo UI
     this._createDemoUI();
     this._initializeTreeScribe();
+    this._initializePluginManager();
+    
+    // Make instance globally accessible for onclick handlers
+    window.treeScribeDemoInstance = this;
     
     if (umbilical.onMount) {
       umbilical.onMount(this);
@@ -62,11 +67,30 @@ class TreeScribeDemoInstance {
         <div class="toolbar-group">
           <label>Document:</label>
           <select id="documentSelect" class="btn-select">
-            <option value="simple-guide">📘 Simple Guide</option>
-            <option value="complex-structure">🏢 Complex Structure</option>
+            <option value="simple-guide">📘 Simple Guide (YAML)</option>
+            <option value="complex-structure">🏢 Complex Structure (YAML)</option>
             <option value="markdown-demo">📝 Markdown Demo</option>
-            <option value="data-showcase">📊 Data Showcase</option>
-            <option value="accessibility-demo">♿ Accessibility Demo</option>
+            <option value="json-demo">{ } JSON Demo</option>
+            <option value="html-demo">🌐 HTML Demo</option>
+            <option value="javascript-demo">📝 JavaScript Demo</option>
+            <option value="xml-demo">📃 XML Demo</option>
+            <option value="csv-demo">📊 CSV Demo (Plugin)</option>
+            <option value="toml-demo">⚙️ TOML Demo (Plugin)</option>
+            <option value="data-showcase">📊 Data Showcase (YAML)</option>
+            <option value="accessibility-demo">♿ Accessibility Demo (YAML)</option>
+          </select>
+        </div>
+        
+        <div class="toolbar-group">
+          <label>Format:</label>
+          <select id="formatSelect" class="btn-select">
+            <option value="auto">🔍 Auto-detect</option>
+            <option value="yaml">📄 YAML</option>
+            <option value="json">{ } JSON</option>
+            <option value="markdown">📝 Markdown</option>
+            <option value="html">🌐 HTML</option>
+            <option value="javascript">📝 JavaScript</option>
+            <option value="xml">📃 XML</option>
           </select>
         </div>
         
@@ -94,9 +118,13 @@ class TreeScribeDemoInstance {
         </div>
         
         <div class="toolbar-group">
-          <input type="file" id="fileInput" accept=".yaml,.yml,.txt" style="display: none;">
+          <input type="file" id="fileInput" accept=".yaml,.yml,.json,.md,.markdown,.mdown,.mkd,.html,.htm,.js,.jsx,.ts,.tsx,.xml,.svg,.txt" style="display: none;">
           <button id="loadFileBtn" class="btn secondary">Load File</button>
           <button id="reloadBtn" class="btn secondary">Reload</button>
+        </div>
+        
+        <div class="toolbar-group">
+          <button id="pluginsBtn" class="btn secondary">🔌 Plugins</button>
         </div>
       </div>
       
@@ -139,6 +167,14 @@ class TreeScribeDemoInstance {
             </div>
           </div>
           
+          <div class="format-panel">
+            <h4>Format Detection</h4>
+            <div id="formatInfo" class="format-info">
+              <div class="format-badge" id="currentFormat">Auto</div>
+              <div class="format-details" id="formatDetails">Select a document to see format information</div>
+            </div>
+          </div>
+          
           <div class="log-panel">
             <h4>Event Log</h4>
             <div id="eventLog" class="event-log"></div>
@@ -155,9 +191,74 @@ class TreeScribeDemoInstance {
       
       <div class="demo-footer">
         <div class="footer-stats">
-          <span>TreeScribe v1.0.0</span> • 
-          <span id="performanceInfo">Performance: Ready</span> • 
-          <span>Built with Umbilical Component Protocol</span>
+          <span>TreeScribe v2.0.0 - Universal Document Viewer</span> • 
+          <span id="formatCount">Formats: <span id="supportedFormats">Loading...</span></span> • 
+          <span id="nodeCount">Nodes: 0</span> • 
+          <span id="loadTime">Load: 0ms</span>
+        </div>
+      </div>
+      
+      <!-- Plugin Manager Modal -->
+      <div id="pluginModal" class="modal" style="display: none;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>🔌 Plugin Manager</h2>
+            <button class="modal-close" id="closePluginModal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="plugin-tabs">
+              <button class="plugin-tab active" data-tab="installed">Installed Plugins</button>
+              <button class="plugin-tab" data-tab="examples">Example Plugins</button>
+              <button class="plugin-tab" data-tab="load">Load Plugin</button>
+            </div>
+            
+            <div class="plugin-content">
+              <!-- Installed Plugins Tab -->
+              <div id="installedTab" class="tab-pane active">
+                <div class="plugin-list" id="installedPlugins">
+                  <p class="empty-message">No plugins currently installed</p>
+                </div>
+              </div>
+              
+              <!-- Example Plugins Tab -->
+              <div id="examplesTab" class="tab-pane" style="display: none;">
+                <div class="plugin-examples">
+                  <div class="plugin-card">
+                    <h4>CSV Parser Plugin</h4>
+                    <p>Parse CSV and TSV files with automatic hierarchy detection and grouping support.</p>
+                    <div class="plugin-actions">
+                      <button class="btn small" id="loadCsvPlugin">Load Plugin</button>
+                      <button class="btn small secondary" id="viewCsvCode">View Code</button>
+                    </div>
+                  </div>
+                  <div class="plugin-card">
+                    <h4>TOML Parser Plugin</h4>
+                    <p>Parse TOML configuration files with full spec support including tables and arrays.</p>
+                    <div class="plugin-actions">
+                      <button class="btn small" id="loadTomlPlugin">Load Plugin</button>
+                      <button class="btn small secondary" id="viewTomlCode">View Code</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Load Plugin Tab -->
+              <div id="loadTab" class="tab-pane" style="display: none;">
+                <div class="load-plugin-form">
+                  <h4>Load Plugin from File</h4>
+                  <p>Select a JavaScript file containing a TreeScribe parser plugin.</p>
+                  <input type="file" id="pluginFileInput" accept=".js,.mjs" style="display: none;">
+                  <button class="btn" id="selectPluginFile">Select Plugin File</button>
+                  <div id="pluginFileInfo" style="margin-top: 10px;"></div>
+                  
+                  <h4 style="margin-top: 30px;">Load Plugin from URL</h4>
+                  <p>Enter the URL of a TreeScribe parser plugin (development only, localhost only).</p>
+                  <input type="text" id="pluginUrlInput" placeholder="http://localhost:3000/my-parser.js" class="plugin-url-input">
+                  <button class="btn" id="loadPluginUrl">Load from URL</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -465,6 +566,55 @@ class TreeScribeDemoInstance {
         margin: 0 5px;
       }
       
+      /* Format panel styles */
+      .format-panel {
+        margin-bottom: 20px;
+        padding: 15px;
+        border: 1px solid #e1e4e8;
+        border-radius: 6px;
+        background: #f6f8fa;
+      }
+      
+      .format-panel h4 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: #24292f;
+      }
+      
+      .format-info {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .format-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        background: #0969da;
+        color: white;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        width: fit-content;
+      }
+      
+      .format-badge.yaml { background: #8250df; }
+      .format-badge.json { background: #1f883d; }
+      .format-badge.markdown { background: #d1242f; }
+      .format-badge.html { background: #e36209; }
+      .format-badge.javascript { background: #f9c513; color: #24292f; }
+      .format-badge.typescript { background: #3178c6; }
+      .format-badge.xml { background: #6f42c1; }
+      .format-badge.auto { background: #656d76; }
+      
+      .format-details {
+        font-size: 12px;
+        color: #656d76;
+        line-height: 1.4;
+      }
+      
       /* Markdown styles */
       .markdown-content {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -628,6 +778,214 @@ class TreeScribeDemoInstance {
           justify-content: space-between;
         }
       }
+      
+      /* Plugin Modal Styles */
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .modal-content {
+        background: white;
+        border-radius: 8px;
+        width: 90%;
+        max-width: 800px;
+        max-height: 80vh;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      }
+      
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 30px;
+        border-bottom: 1px solid #e9ecef;
+        background: #f8f9fa;
+      }
+      
+      .modal-header h2 {
+        margin: 0;
+        color: #333;
+        font-size: 24px;
+      }
+      
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 28px;
+        cursor: pointer;
+        color: #666;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+      }
+      
+      .modal-close:hover {
+        background: #e9ecef;
+        color: #333;
+      }
+      
+      .modal-body {
+        padding: 0;
+        max-height: calc(80vh - 80px);
+        overflow-y: auto;
+      }
+      
+      .plugin-tabs {
+        display: flex;
+        border-bottom: 1px solid #e9ecef;
+        background: #f8f9fa;
+      }
+      
+      .plugin-tab {
+        background: none;
+        border: none;
+        padding: 15px 25px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        color: #666;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s ease;
+      }
+      
+      .plugin-tab:hover {
+        background: #e9ecef;
+        color: #333;
+      }
+      
+      .plugin-tab.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+        background: white;
+      }
+      
+      .plugin-content {
+        padding: 20px 30px;
+      }
+      
+      .tab-pane {
+        display: none;
+      }
+      
+      .tab-pane.active {
+        display: block;
+      }
+      
+      .plugin-list {
+        min-height: 100px;
+      }
+      
+      .empty-message {
+        text-align: center;
+        color: #666;
+        padding: 40px 20px;
+        font-style: italic;
+      }
+      
+      .plugin-examples {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      }
+      
+      .plugin-card {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        background: #f8f9fa;
+      }
+      
+      .plugin-card h4 {
+        margin: 0 0 10px 0;
+        color: #333;
+        font-size: 18px;
+      }
+      
+      .plugin-card p {
+        margin: 0 0 15px 0;
+        color: #666;
+        line-height: 1.5;
+      }
+      
+      .plugin-actions {
+        display: flex;
+        gap: 10px;
+      }
+      
+      .btn.small {
+        padding: 8px 16px;
+        font-size: 13px;
+      }
+      
+      .load-plugin-form h4 {
+        margin: 0 0 10px 0;
+        color: #333;
+        font-size: 18px;
+      }
+      
+      .load-plugin-form p {
+        margin: 0 0 15px 0;
+        color: #666;
+        line-height: 1.5;
+      }
+      
+      .plugin-url-input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+        margin-bottom: 15px;
+      }
+      
+      .plugin-url-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+      }
+      
+      .plugin-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        background: #f8f9fa;
+      }
+      
+      .plugin-item-info h5 {
+        margin: 0 0 5px 0;
+        color: #333;
+        font-size: 16px;
+      }
+      
+      .plugin-item-info p {
+        margin: 0;
+        color: #666;
+        font-size: 13px;
+      }
+      
+      .plugin-item-actions {
+        display: flex;
+        gap: 10px;
+      }
     `;
     
     document.head.appendChild(style);
@@ -662,6 +1020,9 @@ class TreeScribeDemoInstance {
         }
       });
       
+      // Initialize format info display
+      this._updateSupportedFormats();
+      
       // Setup event handlers
       this._setupEventHandlers();
       
@@ -675,6 +1036,15 @@ class TreeScribeDemoInstance {
     this.container.querySelector('#documentSelect').addEventListener('change', (e) => {
       this.currentDocument = e.target.value;
       this._loadDocument(this.currentDocument);
+    });
+    
+    // Format selector
+    this.container.querySelector('#formatSelect').addEventListener('change', (e) => {
+      this.selectedFormat = e.target.value;
+      this._log(`Format selection changed to ${e.target.value}`, 'info');
+      if (this.currentDocument) {
+        this._loadDocument(this.currentDocument);
+      }
     });
     
     // Theme selector
@@ -759,12 +1129,25 @@ class TreeScribeDemoInstance {
         try {
           const content = await file.text();
           const startTime = Date.now();
-          const result = await this.treeScribe.loadYaml(content);
+          
+          // Use filename as hint for format detection
+          const loadOptions = {
+            filename: file.name,
+            mimeType: file.type
+          };
+          
+          // Add explicit format if selected
+          if (this.selectedFormat && this.selectedFormat !== 'auto') {
+            loadOptions.format = this.selectedFormat;
+          }
+          
+          const result = await this.treeScribe.load(content, loadOptions);
           const loadTime = Date.now() - startTime;
           
           if (result.success) {
             this._updateStats(result.nodeCount, loadTime);
-            this._log(`Loaded file "${file.name}" with ${result.nodeCount} nodes`, 'success');
+            this._updateFormatInfo(result.format, result.parser);
+            this._log(`Loaded file "${file.name}" with ${result.nodeCount} nodes (${result.format})`, 'success');
           } else {
             this._log(`Failed to load file: ${result.error}`, 'error');
           }
@@ -790,6 +1173,9 @@ class TreeScribeDemoInstance {
     this.container.querySelector('#clearLogBtn').addEventListener('click', () => {
       this.container.querySelector('#eventLog').innerHTML = '';
     });
+    
+    // Plugin manager events
+    this._setupPluginEvents();
   }
   
   async _loadDefaultDocument() {
@@ -803,14 +1189,30 @@ class TreeScribeDemoInstance {
       this._log(`Loading document: ${documentName}`, 'info');
       const startTime = Date.now();
       
-      let yamlContent = await this._getDocumentContent(documentName);
+      let content = await this._getDocumentContent(documentName);
       
-      const result = await this.treeScribe.loadYaml(yamlContent);
+      // Prepare load options based on format selector
+      const loadOptions = {};
+      if (this.selectedFormat && this.selectedFormat !== 'auto') {
+        loadOptions.format = this.selectedFormat;
+        this._log(`Using explicit format: ${this.selectedFormat}`, 'info');
+      }
+      
+      // Detect format before loading if in auto mode
+      if (!loadOptions.format) {
+        const detection = this.treeScribe.analyzeFormat(content);
+        this._updateFormatDetection(detection);
+        this._log(`Auto-detected format: ${detection.format} (confidence: ${Math.round(detection.confidence * 100)}%)`, 'info');
+      }
+      
+      // Load with new universal method
+      const result = await this.treeScribe.load(content, loadOptions);
       const loadTime = Date.now() - startTime;
       
       if (result.success) {
         this._updateStats(result.nodeCount, loadTime);
-        this._log(`Document loaded successfully (${result.nodeCount} nodes, ${loadTime}ms)`, 'success');
+        this._updateFormatInfo(result.format, result.parser);
+        this._log(`Document loaded successfully (${result.nodeCount} nodes, ${loadTime}ms, ${result.format})`, 'success');
       } else {
         this._log(`Failed to load document: ${result.error}`, 'error');
       }
@@ -824,7 +1226,9 @@ class TreeScribeDemoInstance {
     // Try to fetch from the tree-scribe examples directory first
     const documentPaths = {
       'simple-guide': '/examples/tree-scribe/simple-guide.yaml',
-      'complex-structure': '/examples/tree-scribe/complex-structure.yaml'
+      'complex-structure': '/examples/tree-scribe/complex-structure.yaml',
+      'csv-demo': '/examples/tree-scribe-demo/content/csv-demo.csv',
+      'toml-demo': '/examples/tree-scribe-demo/content/toml-demo.toml'
     };
     
     if (documentPaths[documentName]) {
@@ -1678,7 +2082,516 @@ children:
       - Clear focus indicators
       - Scalable fonts
       - Reduced motion options
-`
+`,
+      
+      'json-demo': `{
+  "title": "JSON Document Structure Demo",
+  "description": "This document demonstrates how TreeScribe can parse and display JSON documents with hierarchical structure.",
+  "metadata": {
+    "format": "json",
+    "version": "1.0.0",
+    "created": "2024-01-17",
+    "author": "TreeScribe Team"
+  },
+  "sections": [
+    {
+      "title": "Introduction to JSON",
+      "content": "JSON (JavaScript Object Notation) is a lightweight data interchange format. It's easy for humans to read and write, and easy for machines to parse and generate.",
+      "examples": [
+        {
+          "name": "Simple Object",
+          "code": "{ \"name\": \"John\", \"age\": 30 }",
+          "description": "A basic JSON object with string and number values"
+        },
+        {
+          "name": "Array Example",
+          "code": "[1, 2, 3, \"four\", true]",
+          "description": "JSON array containing mixed data types"
+        }
+      ]
+    },
+    {
+      "title": "Data Types",
+      "content": "JSON supports several primitive data types and two structural types.",
+      "primitives": {
+        "string": "Text data enclosed in double quotes",
+        "number": 42,
+        "boolean": true,
+        "null": null
+      },
+      "structural": {
+        "object": "Key-value pairs enclosed in curly braces",
+        "array": "Ordered list enclosed in square brackets"
+      }
+    },
+    {
+      "title": "Complex Example",
+      "content": "Here's a more complex JSON structure showing nested objects and arrays.",
+      "company": {
+        "name": "Tech Corp",
+        "founded": 2020,
+        "employees": [
+          {
+            "id": 1,
+            "name": "Alice Johnson",
+            "position": "Senior Developer",
+            "skills": ["JavaScript", "Python", "React"],
+            "active": true
+          },
+          {
+            "id": 2,
+            "name": "Bob Smith",
+            "position": "Product Manager",
+            "skills": ["Strategy", "Analytics", "Leadership"],
+            "active": true
+          }
+        ],
+        "departments": {
+          "engineering": {
+            "head": "Alice Johnson",
+            "budget": 500000,
+            "projects": ["Web App", "Mobile App", "API Gateway"]
+          },
+          "product": {
+            "head": "Bob Smith",
+            "budget": 200000,
+            "projects": ["Market Research", "User Studies"]
+          }
+        }
+      }
+    }
+  ],
+  "tips": [
+    "Always validate JSON syntax before parsing",
+    "Use proper indentation for readability",
+    "Be careful with trailing commas (not allowed in JSON)",
+    "String keys must be double-quoted",
+    "Comments are not supported in pure JSON"
+  ]
+}`,
+      
+      'markdown-demo': `# Markdown Document Demo
+
+This document demonstrates TreeScribe's ability to parse **Markdown** documents and extract their hierarchical structure based on headings.
+
+## Features Overview
+
+TreeScribe can parse various Markdown elements:
+
+- Headers (H1-H6)
+- **Bold** and *italic* text
+- Lists (ordered and unordered)
+- Code blocks and \`inline code\`
+- [Links](https://example.com) and images
+- Tables and blockquotes
+
+## Code Examples
+
+Here are some code examples in different languages:
+
+### JavaScript
+
+\`\`\`javascript
+const treeScribe = new TreeScribeInstance({
+  dom: container,
+  theme: 'light',
+  enableSearch: true
+});
+
+await treeScribe.load(markdownContent, { format: 'markdown' });
+\`\`\`
+
+### Python
+
+\`\`\`python
+import yaml
+
+def process_document(content):
+    """Process document content"""
+    data = yaml.safe_load(content)
+    return data.get('title', 'Untitled')
+\`\`\`
+
+## Lists and Tables
+
+### Task List
+
+- [x] Parse Markdown headers
+- [x] Extract content between headers
+- [x] Build hierarchical tree structure
+- [ ] Add syntax highlighting
+- [ ] Support for math equations
+
+### Feature Comparison
+
+| Feature | YAML | JSON | Markdown |
+|---------|------|---------|----------|
+| Hierarchy | ✅ Native | ✅ Nested | ✅ Headers |
+| Comments | ✅ Yes | ❌ No | ✅ Yes |
+| Readability | ✅ High | ⚠️ Medium | ✅ High |
+| Validation | ⚠️ Loose | ✅ Strict | ⚠️ Loose |
+
+## Advanced Features
+
+### Blockquotes
+
+> TreeScribe provides a universal interface for viewing hierarchical documents.
+> It supports multiple formats while maintaining a consistent user experience.
+
+### Nested Structure
+
+This section demonstrates how Markdown headers create natural hierarchy:
+
+#### Level 4 Header
+
+Content under level 4 header.
+
+##### Level 5 Header
+
+Content under level 5 header.
+
+###### Level 6 Header
+
+Content under level 6 header (deepest level).
+
+## Conclusion
+
+Markdown parsing in TreeScribe enables you to:
+
+1. **View** documents with natural hierarchy
+2. **Navigate** through sections easily  
+3. **Search** across all content
+4. **Export** to other formats
+
+The parser maintains the original Markdown formatting while extracting the structural hierarchy for tree navigation.`,
+      
+      'html-demo': `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="TreeScribe HTML parsing demonstration">
+    <title>HTML Document Structure Demo</title>
+</head>
+<body>
+    <header>
+        <h1>HTML Document Parsing</h1>
+        <nav>
+            <ul>
+                <li><a href="#intro">Introduction</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#examples">Examples</a></li>
+            </ul>
+        </nav>
+    </header>
+    
+    <main>
+        <section id="intro">
+            <h2>Introduction to HTML Parsing</h2>
+            <p>TreeScribe can extract hierarchical structure from HTML documents by analyzing:</p>
+            <ul>
+                <li>Heading elements (H1-H6)</li>
+                <li>Semantic HTML5 elements</li>
+                <li>Document sections and articles</li>
+                <li>Nested structures</li>
+            </ul>
+        </section>
+        
+        <section id="features">
+            <h2>Key Features</h2>
+            
+            <article>
+                <h3>Semantic Element Recognition</h3>
+                <p>The parser understands HTML5 semantic elements like header, nav, main, section, article, aside, and footer.</p>
+            </article>
+            
+            <article>
+                <h3>Heading Hierarchy</h3>
+                <p>Document structure is extracted based on heading levels, creating a natural outline.</p>
+            </article>
+            
+            <article>
+                <h3>Content Extraction</h3>
+                <p>Text content is extracted while preserving structure and removing formatting tags.</p>
+            </article>
+        </section>
+        
+        <section id="examples">
+            <h2>Usage Examples</h2>
+            
+            <div class="example">
+                <h3>Basic HTML Structure</h3>
+                <pre><code>&lt;article&gt;
+    &lt;h1&gt;Title&lt;/h1&gt;
+    &lt;p&gt;Content&lt;/p&gt;
+&lt;/article&gt;</code></pre>
+            </div>
+            
+            <div class="example">
+                <h3>Nested Sections</h3>
+                <pre><code>&lt;section&gt;
+    &lt;h2&gt;Main Section&lt;/h2&gt;
+    &lt;section&gt;
+        &lt;h3&gt;Subsection&lt;/h3&gt;
+    &lt;/section&gt;
+&lt;/section&gt;</code></pre>
+            </div>
+        </section>
+    </main>
+    
+    <aside>
+        <h2>Related Information</h2>
+        <p>HTML parsing is useful for:</p>
+        <ul>
+            <li>Documentation sites</li>
+            <li>Content management systems</li>
+            <li>Web scraping</li>
+            <li>Accessibility tools</li>
+        </ul>
+    </aside>
+    
+    <footer>
+        <p>&copy; 2024 TreeScribe Demo. All rights reserved.</p>
+    </footer>
+</body>
+</html>`,
+      
+      'javascript-demo': `/**
+ * TreeScribe JavaScript Parser Demo
+ * Demonstrates parsing of JavaScript/TypeScript code structures
+ */
+
+import { Component } from './component.js';
+import { Utils } from './utils.js';
+import type { Config, Options } from './types';
+
+// Configuration constants
+const DEFAULT_CONFIG = {
+  theme: 'light',
+  autoSave: true,
+  maxRetries: 3
+};
+
+/**
+ * Main application class
+ * Handles initialization and lifecycle
+ */
+export class Application {
+  private config: Config;
+  private components: Component[] = [];
+  private initialized: boolean = false;
+  
+  constructor(options: Options = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...options };
+    this.initialize();
+  }
+  
+  /**
+   * Initialize the application
+   * @returns {Promise<void>}
+   */
+  async initialize(): Promise<void> {
+    try {
+      await this.loadComponents();
+      await this.setupEventHandlers();
+      this.initialized = true;
+      console.log('Application initialized successfully');
+    } catch (error) {
+      console.error('Initialization failed:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Load all components
+   * @private
+   */
+  private async loadComponents(): Promise<void> {
+    const componentModules = await this.discoverComponents();
+    
+    for (const module of componentModules) {
+      const component = new module.default(this.config);
+      this.components.push(component);
+    }
+  }
+  
+  /**
+   * Set up event handlers
+   * @private
+   */
+  private setupEventHandlers(): void {
+    window.addEventListener('resize', this.handleResize.bind(this));
+    document.addEventListener('click', this.handleClick.bind(this));
+  }
+  
+  // Event handlers
+  private handleResize = (event: Event): void => {
+    this.components.forEach(component => {
+      component.onResize?.(event);
+    });
+  }
+  
+  private handleClick = (event: MouseEvent): void => {
+    const target = event.target as HTMLElement;
+    if (target.matches('.component')) {
+      this.handleComponentClick(target);
+    }
+  }
+  
+  // Public API
+  public getComponent(name: string): Component | undefined {
+    return this.components.find(c => c.name === name);
+  }
+  
+  public addComponent(component: Component): void {
+    this.components.push(component);
+    component.mount(this.config);
+  }
+  
+  public removeComponent(name: string): boolean {
+    const index = this.components.findIndex(c => c.name === name);
+    if (index !== -1) {
+      this.components[index].unmount();
+      this.components.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+}
+
+// Utility functions
+export function createApp(options?: Options): Application {
+  return new Application(options);
+}
+
+export const utils = {
+  formatDate: (date: Date): string => {
+    return new Intl.DateTimeFormat('en-US').format(date);
+  },
+  
+  debounce: <T extends (...args: any[]) => any>(
+    func: T,
+    wait: number
+  ): T => {
+    let timeout: NodeJS.Timeout;
+    return ((...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    }) as T;
+  }
+};
+
+// TypeScript interfaces
+interface ComponentLifecycle {
+  mount(config: Config): void;
+  unmount(): void;
+  onResize?(event: Event): void;
+}
+
+type ComponentState = 'idle' | 'loading' | 'ready' | 'error';
+
+enum LogLevel {
+  DEBUG = 0,
+  INFO = 1,
+  WARN = 2,
+  ERROR = 3
+}
+
+// Default export
+export default Application;`,
+      
+      'xml-demo': `<?xml version="1.0" encoding="UTF-8"?>
+<library xmlns="http://example.com/library"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://example.com/library library.xsd"
+         version="2.0">
+    
+    <metadata>
+        <name>City Public Library</name>
+        <description>Digital catalog of available books and resources</description>
+        <lastUpdated>2024-01-17T10:30:00Z</lastUpdated>
+        <totalItems>15420</totalItems>
+    </metadata>
+    
+    <categories>
+        <category id="fiction" name="Fiction">
+            <subcategory id="sci-fi" name="Science Fiction"/>
+            <subcategory id="fantasy" name="Fantasy"/>
+            <subcategory id="mystery" name="Mystery"/>
+        </category>
+        
+        <category id="non-fiction" name="Non-Fiction">
+            <subcategory id="biography" name="Biography"/>
+            <subcategory id="history" name="History"/>
+            <subcategory id="science" name="Science"/>
+        </category>
+    </categories>
+    
+    <books>
+        <book id="978-0-123-45678-9" category="sci-fi" available="true">
+            <title>The Quantum Paradox</title>
+            <author>
+                <firstName>Jane</firstName>
+                <lastName>Smith</lastName>
+                <bio>Award-winning science fiction author</bio>
+            </author>
+            <publishedDate>2023-06-15</publishedDate>
+            <pages>342</pages>
+            <language>en</language>
+            <rating>4.5</rating>
+            <reviews count="127">
+                <review>
+                    <reviewer>John Doe</reviewer>
+                    <date>2023-07-20</date>
+                    <rating>5</rating>
+                    <comment>Excellent blend of science and fiction!</comment>
+                </review>
+            </reviews>
+        </book>
+        
+        <book id="978-0-987-65432-1" category="biography" available="false">
+            <title>Life in Code</title>
+            <author>
+                <firstName>Alice</firstName>
+                <lastName>Johnson</lastName>
+            </author>
+            <publishedDate>2022-11-30</publishedDate>
+            <pages>428</pages>
+            <language>en</language>
+            <rating>4.8</rating>
+            <reservation>
+                <reservedBy>Mary Wilson</reservedBy>
+                <reservationDate>2024-01-10</reservationDate>
+                <expectedReturn>2024-02-10</expectedReturn>
+            </reservation>
+        </book>
+    </books>
+    
+    <resources>
+        <digitalResource type="ebook" format="pdf">
+            <title>Introduction to XML</title>
+            <url>https://library.example.com/resources/xml-intro.pdf</url>
+            <fileSize unit="MB">2.5</fileSize>
+        </digitalResource>
+        
+        <digitalResource type="audiobook" format="mp3">
+            <title>The Art of Programming</title>
+            <url>https://library.example.com/resources/programming-art.mp3</url>
+            <duration>PT6H30M</duration>
+            <narrator>David Brown</narrator>
+        </digitalResource>
+    </resources>
+    
+    <schedule>
+        <hours dayOfWeek="Monday" open="09:00" close="21:00"/>
+        <hours dayOfWeek="Tuesday" open="09:00" close="21:00"/>
+        <hours dayOfWeek="Wednesday" open="09:00" close="21:00"/>
+        <hours dayOfWeek="Thursday" open="09:00" close="21:00"/>
+        <hours dayOfWeek="Friday" open="09:00" close="18:00"/>
+        <hours dayOfWeek="Saturday" open="10:00" close="17:00"/>
+        <hours dayOfWeek="Sunday" open="12:00" close="17:00"/>
+    </schedule>
+</library>`
     };
     
     return inlineDocuments[documentName] || inlineDocuments['simple-guide'];
@@ -1705,6 +2618,60 @@ children:
   
   _updateThemeStatus(theme) {
     this.container.querySelector('#currentTheme').textContent = theme;
+  }
+  
+  _updateSupportedFormats() {
+    if (this.treeScribe) {
+      const formats = this.treeScribe.getSupportedFormats();
+      const supportedFormatsEl = this.container.querySelector('#supportedFormats');
+      if (supportedFormatsEl) {
+        supportedFormatsEl.textContent = formats.join(', ');
+      }
+      this._log(`Supported formats: ${formats.join(', ')}`, 'info');
+    }
+  }
+  
+  _updateFormatDetection(detection) {
+    const formatBadge = this.container.querySelector('#currentFormat');
+    const formatDetails = this.container.querySelector('#formatDetails');
+    
+    if (detection && detection.format) {
+      // Update format badge
+      formatBadge.textContent = detection.format.toUpperCase();
+      formatBadge.className = `format-badge ${detection.format}`;
+      
+      // Update format details
+      const confidence = Math.round(detection.confidence * 100);
+      let details = `Format: ${detection.format} (${confidence}% confidence)`;
+      
+      if (detection.source) {
+        details += `\nSource: ${detection.source}`;
+      }
+      
+      if (detection.alternatives && detection.alternatives.length > 0) {
+        const alternatives = detection.alternatives
+          .map(alt => `${alt.format} (${Math.round(alt.confidence * 100)}%)`)
+          .join(', ');
+        details += `\nAlternatives: ${alternatives}`;
+      }
+      
+      formatDetails.textContent = details;
+    } else {
+      formatBadge.textContent = 'UNKNOWN';
+      formatBadge.className = 'format-badge auto';
+      formatDetails.textContent = 'Unable to detect format';
+    }
+  }
+  
+  _updateFormatInfo(format, parser) {
+    const formatBadge = this.container.querySelector('#currentFormat');
+    const formatDetails = this.container.querySelector('#formatDetails');
+    
+    if (format) {
+      formatBadge.textContent = format.toUpperCase();
+      formatBadge.className = `format-badge ${format}`;
+      formatDetails.textContent = `Loaded as ${format} using ${parser || 'unknown parser'}`;
+    }
   }
   
   _log(message, type = 'info') {
@@ -1739,11 +2706,344 @@ children:
     return this.treeScribe;
   }
   
+  async _initializePluginManager() {
+    try {
+      // Import plugin manager dynamically
+      const { ParserPluginManager } = await import('/src/components/tree-scribe/features/plugins/ParserPluginManager.js');
+      this.pluginManager = new ParserPluginManager({
+        sandbox: true,
+        maxPlugins: 20,
+        maxParseTime: 5000
+      });
+      
+      this._log('Plugin manager initialized', 'info');
+    } catch (error) {
+      this._log(`Failed to initialize plugin manager: ${error.message}`, 'error');
+    }
+  }
+  
+  _setupPluginEvents() {
+    // Plugin modal toggle
+    this.container.querySelector('#pluginsBtn').addEventListener('click', () => {
+      this._showPluginModal();
+    });
+    
+    // Close modal
+    this.container.querySelector('#closePluginModal').addEventListener('click', () => {
+      this._hidePluginModal();
+    });
+    
+    // Close modal on background click
+    this.container.querySelector('#pluginModal').addEventListener('click', (e) => {
+      if (e.target.id === 'pluginModal') {
+        this._hidePluginModal();
+      }
+    });
+    
+    // Plugin tabs
+    this.container.querySelectorAll('.plugin-tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        this._switchPluginTab(e.target.dataset.tab);
+      });
+    });
+    
+    // Example plugin loading
+    this.container.querySelector('#loadCsvPlugin').addEventListener('click', () => {
+      this._loadExamplePlugin('csv');
+    });
+    
+    this.container.querySelector('#loadTomlPlugin').addEventListener('click', () => {
+      this._loadExamplePlugin('toml');
+    });
+    
+    // View plugin code
+    this.container.querySelector('#viewCsvCode').addEventListener('click', () => {
+      this._viewPluginCode('csv');
+    });
+    
+    this.container.querySelector('#viewTomlCode').addEventListener('click', () => {
+      this._viewPluginCode('toml');
+    });
+    
+    // Plugin file loading
+    this.container.querySelector('#selectPluginFile').addEventListener('click', () => {
+      this.container.querySelector('#pluginFileInput').click();
+    });
+    
+    this.container.querySelector('#pluginFileInput').addEventListener('change', (e) => {
+      this._handlePluginFileSelect(e);
+    });
+    
+    // Plugin URL loading
+    this.container.querySelector('#loadPluginUrl').addEventListener('click', () => {
+      this._loadPluginFromUrl();
+    });
+  }
+  
+  _showPluginModal() {
+    const modal = this.container.querySelector('#pluginModal');
+    modal.style.display = 'flex';
+    this._refreshInstalledPlugins();
+  }
+  
+  _hidePluginModal() {
+    const modal = this.container.querySelector('#pluginModal');
+    modal.style.display = 'none';
+  }
+  
+  _switchPluginTab(tabName) {
+    // Update tab buttons
+    this.container.querySelectorAll('.plugin-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    this.container.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    
+    // Update tab panes
+    this.container.querySelectorAll('.tab-pane').forEach(pane => {
+      pane.classList.remove('active');
+      pane.style.display = 'none';
+    });
+    
+    const targetPane = this.container.querySelector(`#${tabName}Tab`);
+    targetPane.classList.add('active');
+    targetPane.style.display = 'block';
+    
+    // Refresh content if needed
+    if (tabName === 'installed') {
+      this._refreshInstalledPlugins();
+    }
+  }
+  
+  async _loadExamplePlugin(type) {
+    if (!this.pluginManager) {
+      this._log('Plugin manager not available', 'error');
+      return;
+    }
+    
+    try {
+      let pluginUrl;
+      if (type === 'csv') {
+        pluginUrl = '/src/components/tree-scribe/features/plugins/examples/csv-parser-plugin.js';
+      } else if (type === 'toml') {
+        pluginUrl = '/src/components/tree-scribe/features/plugins/examples/toml-parser-plugin.js';
+      }
+      
+      this._log(`Loading ${type.toUpperCase()} parser plugin...`, 'info');
+      
+      // Import the plugin module
+      const pluginModule = await import(pluginUrl);
+      const plugin = pluginModule.default;
+      
+      // Register with plugin manager
+      await this.pluginManager.register(type, plugin);
+      
+      // Register with TreeScribe
+      if (this.treeScribe && this.treeScribe.registerPlugin) {
+        this.treeScribe.registerPlugin(type, plugin);
+      }
+      
+      this._log(`${plugin.metadata.name} loaded successfully`, 'success');
+      this._refreshInstalledPlugins();
+      this._updateFormatOptions();
+      
+    } catch (error) {
+      this._log(`Failed to load ${type} plugin: ${error.message}`, 'error');
+    }
+  }
+  
+  _viewPluginCode(type) {
+    let url;
+    if (type === 'csv') {
+      url = '/src/components/tree-scribe/features/plugins/examples/csv-parser-plugin.js';
+    } else if (type === 'toml') {
+      url = '/src/components/tree-scribe/features/plugins/examples/toml-parser-plugin.js';
+    }
+    
+    window.open(url, '_blank');
+  }
+  
+  async _handlePluginFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const fileInfo = this.container.querySelector('#pluginFileInfo');
+    fileInfo.innerHTML = `Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    
+    try {
+      const content = await file.text();
+      
+      // Basic validation
+      if (!content.includes('export default') || !content.includes('Parser')) {
+        throw new Error('File does not appear to be a valid TreeScribe plugin');
+      }
+      
+      // Create a blob URL and import
+      const blob = new Blob([content], { type: 'application/javascript' });
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const pluginModule = await import(blobUrl);
+      const plugin = pluginModule.default;
+      const format = plugin.metadata.name.toLowerCase().replace('parser', '');
+      
+      await this.pluginManager.register(format, plugin);
+      
+      if (this.treeScribe && this.treeScribe.registerPlugin) {
+        this.treeScribe.registerPlugin(format, plugin);
+      }
+      
+      this._log(`Plugin "${plugin.metadata.name}" loaded from file`, 'success');
+      this._refreshInstalledPlugins();
+      this._updateFormatOptions();
+      
+      // Clean up
+      URL.revokeObjectURL(blobUrl);
+      
+    } catch (error) {
+      this._log(`Failed to load plugin from file: ${error.message}`, 'error');
+      fileInfo.innerHTML = `Error: ${error.message}`;
+    }
+  }
+  
+  async _loadPluginFromUrl() {
+    const urlInput = this.container.querySelector('#pluginUrlInput');
+    const url = urlInput.value.trim();
+    
+    if (!url) {
+      this._log('Please enter a plugin URL', 'error');
+      return;
+    }
+    
+    if (!url.startsWith('http://localhost')) {
+      this._log('Only localhost URLs are allowed for security', 'error');
+      return;
+    }
+    
+    try {
+      this._log(`Loading plugin from ${url}...`, 'info');
+      
+      const pluginModule = await this.pluginManager.loadFromUrl(url);
+      const format = pluginModule.metadata.name.toLowerCase().replace('parser', '');
+      
+      await this.pluginManager.register(format, pluginModule);
+      
+      if (this.treeScribe && this.treeScribe.registerPlugin) {
+        this.treeScribe.registerPlugin(format, pluginModule);
+      }
+      
+      this._log(`Plugin "${pluginModule.metadata.name}" loaded from URL`, 'success');
+      this._refreshInstalledPlugins();
+      this._updateFormatOptions();
+      urlInput.value = '';
+      
+    } catch (error) {
+      this._log(`Failed to load plugin from URL: ${error.message}`, 'error');
+    }
+  }
+  
+  _refreshInstalledPlugins() {
+    const pluginList = this.container.querySelector('#installedPlugins');
+    
+    if (!this.pluginManager) {
+      pluginList.innerHTML = '<p class="empty-message">Plugin manager not available</p>';
+      return;
+    }
+    
+    const formats = this.pluginManager.getFormats();
+    
+    if (formats.length === 0) {
+      pluginList.innerHTML = '<p class="empty-message">No plugins currently installed</p>';
+      return;
+    }
+    
+    pluginList.innerHTML = formats.map(format => {
+      const metadata = this.pluginManager.getMetadata(format);
+      const stats = this.pluginManager.getStatistics().plugins[format];
+      
+      return `
+        <div class="plugin-item">
+          <div class="plugin-item-info">
+            <h5>${metadata.name} v${metadata.version}</h5>
+            <p>${metadata.description}</p>
+            <p><small>Format: ${format} | Uses: ${stats.metrics.uses} | Avg Time: ${Math.round(stats.averageParseTime)}ms</small></p>
+          </div>
+          <div class="plugin-item-actions">
+            <button class="btn small secondary" onclick="treeScribeDemoInstance._unloadPlugin('${format}')">Unload</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  _unloadPlugin(format) {
+    if (!this.pluginManager) return;
+    
+    try {
+      this.pluginManager.unregister(format);
+      
+      if (this.treeScribe && this.treeScribe.unregisterPlugin) {
+        this.treeScribe.unregisterPlugin(format);
+      }
+      
+      this._log(`Plugin for format "${format}" unloaded`, 'info');
+      this._refreshInstalledPlugins();
+      this._updateFormatOptions();
+      
+    } catch (error) {
+      this._log(`Failed to unload plugin: ${error.message}`, 'error');
+    }
+  }
+  
+  _updateFormatOptions() {
+    const formatSelect = this.container.querySelector('#formatSelect');
+    const currentValue = formatSelect.value;
+    
+    // Get base formats
+    const baseOptions = [
+      { value: 'auto', text: '🔍 Auto-detect' },
+      { value: 'yaml', text: '📄 YAML' },
+      { value: 'json', text: '{ } JSON' },
+      { value: 'markdown', text: '📝 Markdown' },
+      { value: 'html', text: '🌐 HTML' },
+      { value: 'javascript', text: '📝 JavaScript' },
+      { value: 'xml', text: '📃 XML' }
+    ];
+    
+    // Add plugin formats
+    if (this.pluginManager) {
+      const pluginFormats = this.pluginManager.getFormats();
+      for (const format of pluginFormats) {
+        const metadata = this.pluginManager.getMetadata(format);
+        baseOptions.push({
+          value: format,
+          text: `🔌 ${format.toUpperCase()} (Plugin)`
+        });
+      }
+    }
+    
+    // Update select options
+    formatSelect.innerHTML = baseOptions.map(option => 
+      `<option value="${option.value}">${option.text}</option>`
+    ).join('');
+    
+    // Restore previous selection if still valid
+    if (baseOptions.some(option => option.value === currentValue)) {
+      formatSelect.value = currentValue;
+    }
+  }
+  
   destroy() {
     if (this._destroyed) return;
     
     if (this.treeScribe && this.treeScribe.destroy) {
       this.treeScribe.destroy();
+    }
+    
+    if (this.pluginManager) {
+      // Clean up plugins
+      const formats = this.pluginManager.getFormats();
+      formats.forEach(format => {
+        this.pluginManager.unregister(format);
+      });
     }
     
     if (this.container && this.container.parentNode) {
@@ -1752,6 +3052,11 @@ children:
     
     if (this.searchTimeout) {
       clearTimeout(this.searchTimeout);
+    }
+    
+    // Clean up global reference
+    if (window.treeScribeDemoInstance === this) {
+      delete window.treeScribeDemoInstance;
     }
     
     this._destroyed = true;

@@ -264,7 +264,13 @@ export class TreeScribeInstance {
    *   console.error('Load failed:', result.error);
    * }
    */
-  async loadYaml(content) {
+  /**
+   * Load content with automatic format detection or specified format
+   * @param {string} content - Document content or URL
+   * @param {Object} options - Load options
+   * @returns {Promise<Object>} Result with success status and metadata
+   */
+  async load(content, options = {}) {
     if (this.destroyed) {
       return { success: false, error: 'Component destroyed' };
     }
@@ -274,7 +280,8 @@ export class TreeScribeInstance {
       this.view.showLoading();
       
       // Load content based on type
-      let yamlContent = content;
+      let documentContent = content;
+      let hints = { ...options };
       
       if (typeof content === 'string' && content.startsWith('http')) {
         // Load from URL
@@ -282,13 +289,17 @@ export class TreeScribeInstance {
         if (!response.ok) {
           throw new Error(`Failed to load: ${response.statusText}`);
         }
-        yamlContent = await response.text();
+        documentContent = await response.text();
+        
+        // Add URL as hint for format detection
+        hints.filename = content;
+        hints.mimeType = response.headers.get('content-type');
       }
       
-      // Parse and load YAML
+      // Parse and load content
       let loadResult;
       try {
-        loadResult = this.model.loadYaml(yamlContent);
+        loadResult = this.model.load(documentContent, hints);
       } catch (error) {
         this.view.showError(error.message);
         return { success: false, error: error.message };
@@ -297,27 +308,29 @@ export class TreeScribeInstance {
       // Update search index
       if (this.searchEngine) {
         const nodes = this.model.getAllNodes();
-        this.searchEngine.indexTree({ nodes });
+        this.searchEngine.indexNodes(nodes);
       }
       
-      // Render tree
-      this.viewModel.render();
-      
-      // Setup virtual scroll if enabled
-      if (this.virtualScrollManager) {
-        const nodeCount = loadResult.nodeCount || 0;
-        this.virtualScrollManager.updateTotalItems(nodeCount);
-      }
+      // Update view
+      this._updateView();
       
       // Hide loading state
       this.view.hideLoading();
       
-      return { success: true, nodeCount: loadResult.nodeCount };
+      return loadResult;
       
     } catch (error) {
+      console.error('[TreeScribe] Load error:', error);
       this.view.showError(error.message);
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Load YAML content (deprecated - use load() instead)
+   */
+  async loadYaml(content) {
+    return this.load(content, { format: 'yaml' });
   }
 
   /**
@@ -618,6 +631,51 @@ export class TreeScribeInstance {
     if (this.destroyed) return false;
     
     return this.rendererRegistry.register(name, renderer);
+  }
+
+  /**
+   * Register a parser
+   * @param {BaseParser} parser - Parser instance
+   */
+  registerParser(parser) {
+    if (this.destroyed) return false;
+    
+    this.model.registerParser(parser);
+    return true;
+  }
+
+  /**
+   * Get supported formats
+   * @returns {string[]} Array of format identifiers
+   */
+  getSupportedFormats() {
+    if (this.destroyed) return [];
+    
+    return this.model.getSupportedFormats();
+  }
+
+  /**
+   * Detect format of content
+   * @param {string} content - Document content
+   * @param {Object} hints - Format hints
+   * @returns {string|null} Detected format or null
+   */
+  detectFormat(content, hints = {}) {
+    if (this.destroyed) return null;
+    
+    return this.model.detectFormat(content, hints);
+  }
+
+  /**
+   * Get detailed format analysis
+   * @param {string} content - Document content
+   * @param {Object} hints - Format hints
+   * @returns {Object} Detailed format analysis with confidence scores
+   */
+  analyzeFormat(content, hints = {}) {
+    if (this.destroyed) return null;
+    
+    return this.model.analyzeFormat(content, hints);
   }
 
   /**
