@@ -59,8 +59,18 @@ class TreeScribeDemoInstance {
     this.container.className = 'tree-scribe-demo';
     this.container.innerHTML = `
       <div class="demo-header">
-        <h1>🌳 TreeScribe YAML Document Viewer</h1>
-        <p>Interactive YAML document viewer with advanced features and accessibility</p>
+        <h1>🌳 TreeScribe Universal Document Viewer</h1>
+        <p>Multi-format document viewer with 8+ supported formats, plugin system, and enterprise features - built as a single umbilical component</p>
+        <div class="format-badges">
+          <span class="badge">YAML</span>
+          <span class="badge">JSON</span>
+          <span class="badge">Markdown</span>
+          <span class="badge">HTML</span>
+          <span class="badge">JavaScript</span>
+          <span class="badge">XML</span>
+          <span class="badge plugin">CSV Plugin</span>
+          <span class="badge plugin">TOML Plugin</span>
+        </div>
       </div>
       
       <div class="demo-toolbar">
@@ -296,9 +306,32 @@ class TreeScribeDemoInstance {
       }
       
       .demo-header p {
-        margin: 0;
+        margin: 0 0 15px 0;
         opacity: 0.9;
         font-size: 16px;
+      }
+      
+      .format-badges {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      
+      .badge {
+        padding: 4px 8px;
+        font-size: 12px;
+        font-weight: 500;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+      
+      .badge.plugin {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 193, 7, 0.5);
+        color: #ffc107;
       }
       
       .demo-toolbar {

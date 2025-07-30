@@ -312,7 +312,7 @@ export class TreeScribeInstance {
       }
       
       // Update view
-      this._updateView();
+      this.viewModel.render();
       
       // Hide loading state
       this.view.hideLoading();
