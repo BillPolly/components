@@ -1,22 +1,26 @@
 {
-  "name": "es6-frontend-project",
+  "name": "@legion/components",
   "version": "1.0.0",
-  "description": "Pure ES6 frontend project with Jest testing",
+  "description": "Umbilical Component Protocol - A minimal JavaScript component system for Legion",
   "type": "module",
   "main": "src/index.js",
   "scripts": {
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
+    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "start": "lsof -ti:3600 | xargs kill -9 2>/dev/null || true && node server/server.js",
     "dev": "node server/server.js"
   },
   "keywords": [
-    "es6",
+    "legion",
+    "components",
+    "umbilical",
     "frontend",
+    "es6",
     "jest",
     "testing"
   ],
-  "author": "",
+  "author": "Legion Contributors",
   "license": "MIT",
   "devDependencies": {
     "esbuild": "^0.25.8",
@@ -42,5 +46,9 @@
     "highlight.js": "^11.11.1",
     "markdown-it": "^14.1.0",
     "yaml": "^2.8.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BillPolly/components.git"
   }
 }
