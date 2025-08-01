@@ -3,8 +3,8 @@
  */
 
 import { HierarchyModel } from './model/HierarchyModel.js';
-import { HierarchyTreeView } from './view/HierarchyTreeView.js';
-import { HierarchyViewModel } from './viewmodel/HierarchyViewModel.js';
+import { HierarchyRenderer } from './renderer/HierarchyRenderer.js';
+import { ExpansionStateManager } from './state/ExpansionStateManager.js';
 import { FormatHandlerFactory } from './handlers/FormatHandlerFactory.js';
 import { ViewModeManager } from './view/ViewModeManager.js';
 import { EventEmitter } from './EventEmitter.js';
@@ -57,8 +57,8 @@ export class HierarchyEditorInstance extends EventEmitter {
     
     // Initialize components
     this.model = null;
-    this.view = null;
-    this.viewModel = null;
+    this.renderer = null;
+    this.expansionState = null;
     this.viewModeManager = null;
     this.formatHandler = null;
     
@@ -206,19 +206,25 @@ export class HierarchyEditorInstance extends EventEmitter {
       
       // Initialize model
       this.model = new HierarchyModel();
+      this.model.registerHandler('json', this.formatHandler);
       
-      // Initialize view
-      const viewContainer = this.dom.querySelector('.he-tree-view');
-      this.view = new HierarchyTreeView(viewContainer, {
-        theme: this.config.theme,
-        indentSize: this.config.indentSize,
-        icons: this.config.icons,
-        editable: this.config.editable,
-        ariaLabels: this.config.ariaLabels
+      // Initialize expansion state
+      this.expansionState = new ExpansionStateManager({
+        defaultExpanded: true,
+        maxDepth: 10,
+        persistKey: this.config.persistExpansion ? `hierarchy-expansion-${this.config.format}` : null
       });
       
-      // Initialize view model
-      this.viewModel = new HierarchyViewModel(this.model, this.view);
+      // Initialize renderer
+      const viewContainer = this.dom.querySelector('.he-tree-view');
+      this.renderer = new HierarchyRenderer({
+        theme: this.config.theme,
+        enableEditing: this.config.editable,
+        expansionState: this.expansionState,
+        onEdit: this._handleRendererEdit.bind(this),
+        onExpand: this._handleExpand.bind(this),
+        onCollapse: this._handleCollapse.bind(this)
+      });
       
       // Initialize view mode manager
       this.viewModeManager = new ViewModeManager(this.dom.querySelector('.he-content'), {
@@ -294,24 +300,14 @@ export class HierarchyEditorInstance extends EventEmitter {
       });
     }
     
-    // Forward view events
-    if (this.view) {
-      this.view.on('select', (data) => {
-        this.selectedNode = data.nodeId;
-        this.emit('select', data);
+    // Forward expansion state events
+    if (this.expansionState) {
+      this.expansionState.on('expand', (path) => this.emit('expand', { path }));
+      this.expansionState.on('collapse', (path) => this.emit('collapse', { path }));
+      this.expansionState.on('change', (data) => {
+        // Re-render on expansion changes
+        this._renderTree();
       });
-      
-      this.view.on('expand', (data) => this.emit('expand', data));
-      this.view.on('collapse', (data) => this.emit('collapse', data));
-      this.view.on('navigate', (data) => this.emit('navigate', data));
-    }
-    
-    // Forward view model events
-    if (this.viewModel) {
-      this.viewModel.on('edit', (data) => this.emit('edit', data));
-      this.viewModel.on('nodeadd', (data) => this.emit('nodeadd', data));
-      this.viewModel.on('nodedelete', (data) => this.emit('nodedelete', data));
-      this.viewModel.on('nodemove', (data) => this.emit('nodemove', data));
     }
     
     // Forward view mode manager events
@@ -461,10 +457,8 @@ export class HierarchyEditorInstance extends EventEmitter {
         this.model.setRootNode(rootNode);
       }
       
-      // Update view
-      if (this.viewModel) {
-        this.viewModel.render();
-      }
+      // Render tree
+      this._renderTree();
       
       // Update view mode manager
       if (this.viewModeManager) {
@@ -573,53 +567,61 @@ export class HierarchyEditorInstance extends EventEmitter {
   }
   
   selectNode(pathOrId) {
-    if (!this.view) return this;
-    
     const node = this._findNode(pathOrId);
     if (node) {
-      this.view.selectNode(node.id);
       this.selectedNode = node.id;
+      this.emit('select', { nodeId: node.id, path: pathOrId });
     }
     
     return this;
   }
   
   expandNode(pathOrId, recursive = false) {
-    if (!this.view) return this;
+    if (!this.expansionState) return this;
     
     const node = this._findNode(pathOrId);
     if (node) {
-      this.view.expandNode(node.id, recursive);
+      const path = this._getNodePath(node);
+      if (recursive) {
+        const paths = this._collectExpandablePaths(node, path);
+        paths.forEach(p => this.expansionState.expand(p));
+      } else {
+        this.expansionState.expand(path);
+      }
     }
     
     return this;
   }
   
   collapseNode(pathOrId) {
-    if (!this.view) return this;
+    if (!this.expansionState) return this;
     
     const node = this._findNode(pathOrId);
     if (node) {
-      this.view.collapseNode(node.id);
+      const path = this._getNodePath(node);
+      this.expansionState.collapse(path);
     }
     
     return this;
   }
   
   expandAll() {
-    if (!this.view) return this;
-    this.view.expandAll();
+    if (!this.expansionState || !this.model) return this;
+    const rootNode = this.model.getRootNode();
+    if (rootNode) {
+      this.expansionState.expandAll(rootNode);
+    }
     return this;
   }
   
   collapseAll() {
-    if (!this.view) return this;
-    this.view.collapseAll();
+    if (!this.expansionState) return this;
+    this.expansionState.collapseAll();
     return this;
   }
   
   editNode(pathOrId, value) {
-    if (!this.config.editable || !this.viewModel) return false;
+    if (!this.config.editable || !this.model) return false;
     
     const node = this._findNode(pathOrId);
     if (!node) return false;
@@ -640,7 +642,7 @@ export class HierarchyEditorInstance extends EventEmitter {
     }
     
     try {
-      this.viewModel.editNode(node.id, value);
+      this.model.updateNodeValue(node.id, value);
       
       this.emit('nodeedit', {
         path: node.path || node.name,
@@ -664,28 +666,32 @@ export class HierarchyEditorInstance extends EventEmitter {
   }
   
   startInlineEdit(pathOrId) {
-    if (!this.config.editable || !this.view) return this;
+    if (!this.config.editable) return this;
     
     const node = this._findNode(pathOrId);
-    if (node && this.view.startInlineEdit) {
-      this.view.startInlineEdit(node.id);
-      
+    if (node) {
       this.emit('editstart', {
         path: node.path || node.name,
         currentValue: node.value,
         mode: 'inline'
       });
+      
+      // The renderer handles inline editing through its own mechanism
+      this._startInlineEditMode = true;
+      this._editingNodeId = node.id;
+      this._renderTree();
     }
     
     return this;
   }
   
   cancelEdit() {
-    if (!this.view) return this;
-    
-    if (this.view.cancelEdit) {
-      const node = this._findNode(this.selectedNode);
-      this.view.cancelEdit();
+    if (this._startInlineEditMode && this._editingNodeId) {
+      const node = this._findNode(this._editingNodeId);
+      
+      this._startInlineEditMode = false;
+      this._editingNodeId = null;
+      this._renderTree();
       
       if (node) {
         this.emit('editcancel', {
@@ -700,10 +706,20 @@ export class HierarchyEditorInstance extends EventEmitter {
   }
   
   addNode(parentPath, value, key) {
-    if (!this.config.editable || !this.viewModel) return false;
+    if (!this.config.editable || !this.model) return false;
     
     try {
-      const result = this.viewModel.addNode(parentPath, value, key);
+      const parentNode = this._findNode(parentPath);
+      if (!parentNode) return false;
+      
+      const nodeData = {
+        type: this._inferNodeType(value),
+        name: key || '',
+        value: typeof value === 'object' ? null : value
+      };
+      
+      this.model.addNode(parentNode.id, nodeData);
+      const result = { nodeId: nodeData.id, index: parentNode.children ? parentNode.children.length - 1 : 0 };
       
       if (result) {
         const parentNode = this._findNode(parentPath);
@@ -735,7 +751,7 @@ export class HierarchyEditorInstance extends EventEmitter {
   }
   
   deleteNode(pathOrId) {
-    if (!this.config.editable || !this.viewModel) return false;
+    if (!this.config.editable || !this.model) return false;
     
     const node = this._findNode(pathOrId);
     if (!node) return false;
@@ -756,7 +772,8 @@ export class HierarchyEditorInstance extends EventEmitter {
       const hadChildren = node.children && node.children.length > 0;
       const parentPath = node.parent ? (node.parent.path || '') : '';
       
-      const result = this.viewModel.deleteNode(node.id);
+      this.model.removeNode(node.id);
+      const result = true;
       
       if (result) {
         this.emit('noderemove', {
@@ -791,7 +808,7 @@ export class HierarchyEditorInstance extends EventEmitter {
   }
   
   moveNode(fromPath, toPath, toIndex) {
-    if (!this.config.editable || !this.viewModel) return false;
+    if (!this.config.editable || !this.model) return false;
     
     try {
       const fromNode = this._findNode(fromPath);
@@ -804,7 +821,8 @@ export class HierarchyEditorInstance extends EventEmitter {
         throw new Error('Cannot move node into its own descendant (circular reference)');
       }
       
-      const result = this.viewModel.moveNode(fromNode.id, toNode.id, toIndex);
+      this.model.moveNode(fromNode.id, toNode.id, toIndex);
+      const result = true;
       
       if (result) {
         this.emit('nodemove', {
@@ -1050,6 +1068,109 @@ export class HierarchyEditorInstance extends EventEmitter {
     }
   }
   
+  _renderTree() {
+    if (!this.model || !this.renderer) return;
+    
+    const viewContainer = this.dom.querySelector('.he-tree-view');
+    if (!viewContainer) return;
+    
+    // Clear existing content
+    viewContainer.innerHTML = '';
+    
+    // Get root node
+    const rootNode = this.model.getRootNode();
+    if (!rootNode) {
+      this._showEmptyState();
+      return;
+    }
+    
+    // Render the tree
+    const renderedElement = this.renderer.render(rootNode, {
+      formatHandler: this.formatHandler
+    });
+    
+    viewContainer.appendChild(renderedElement);
+  }
+  
+  _handleRendererEdit(editData) {
+    const { node, type, oldValue, newValue } = editData;
+    
+    if (type === 'key') {
+      // Handle key edit - need to recreate node with new key
+      const parentNode = node.parent;
+      if (parentNode) {
+        const nodeData = {
+          type: node.type,
+          name: newValue,
+          value: node.value,
+          children: node.children
+        };
+        this.model.removeNode(node.id);
+        this.model.addNode(parentNode.id, nodeData);
+      }
+    } else if (type === 'value') {
+      // Handle value edit
+      this.model.updateNodeValue(node.id, newValue);
+    }
+    
+    this.emit('nodeedit', {
+      path: node.path || node.name,
+      oldValue,
+      newValue,
+      type
+    });
+    
+    this._emitContentChange('edit');
+  }
+  
+  _handleExpand(node, nodePath) {
+    this.emit('expand', { node, path: nodePath });
+  }
+  
+  _handleCollapse(node, nodePath) {
+    this.emit('collapse', { node, path: nodePath });
+  }
+  
+  _getNodePath(node) {
+    if (!node) return '';
+    
+    const parts = [];
+    let current = node;
+    
+    while (current) {
+      if (current.name) {
+        parts.unshift(current.name);
+      } else if (current.id && current.id !== 'root') {
+        parts.unshift(current.id);
+      }
+      current = current.parent;
+    }
+    
+    return parts.join('.');
+  }
+  
+  _collectExpandablePaths(node, basePath) {
+    const paths = [];
+    
+    if (node.children && node.children.length > 0) {
+      paths.push(basePath);
+      
+      node.children.forEach((child, index) => {
+        const childPath = basePath ? `${basePath}.${child.name || index}` : (child.name || index.toString());
+        paths.push(...this._collectExpandablePaths(child, childPath));
+      });
+    }
+    
+    return paths;
+  }
+  
+  _inferNodeType(value) {
+    if (value === null || value === undefined) return 'value';
+    if (Array.isArray(value)) return 'array';
+    if (typeof value === 'object') return 'object';
+    return 'value';
+  }
+
   destroy() {
     if (this.destroyed) return;
     
@@ -1069,12 +1190,12 @@ export class HierarchyEditorInstance extends EventEmitter {
       this.viewModeManager.destroy();
     }
     
-    if (this.viewModel) {
-      this.viewModel.destroy();
+    if (this.expansionState) {
+      this.expansionState.destroy();
     }
     
-    if (this.view) {
-      this.view.destroy();
+    if (this.renderer) {
+      this.renderer.clearCache();
     }
     
     if (this.model) {

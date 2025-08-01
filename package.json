@@ -7,7 +7,7 @@
   "scripts": {
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
-    "start": "node server/server.js",
+    "start": "lsof -ti:3600 | xargs kill -9 2>/dev/null || true && node server/server.js",
     "dev": "node server/server.js"
   },
   "keywords": [

@@ -5,9 +5,10 @@
  */
 
 import { BaseViewModel } from '../../base/index.js';
+import { HierarchyEditor } from '../../hierarchy-editor/index.js';
 
-// Generic HierarchyEditor for any hierarchical document format
-const HierarchyEditor = {
+// Mock HierarchyEditor for fallback (remove this once real component is working)
+const MockHierarchyEditor = {
   create(config) {
     const editor = {
       _config: config,
@@ -1161,7 +1162,8 @@ export class HierarchyEditorDemoViewModel extends BaseViewModel {
       onChange: () => {
         this.view.updateStatus('basic', 'Modified');
       },
-      onMount: (instance) => {
+      onMount: (event) => {
+        const instance = event.instance || event;
         this.model.registerEditor('basic', instance);
         this.view.updateStatus('basic', 'Ready - Sample JSON loaded');
       },
@@ -1179,6 +1181,8 @@ export class HierarchyEditorDemoViewModel extends BaseViewModel {
     
     const formatDemo = HierarchyEditor.create({
       dom: container,
+      content: this.model.getSampleData('json'),
+      format: 'json',
       showToolbar: true,
       onFormatChange: (e) => {
         this.view.updateFormatInfo(e.toFormat);
@@ -1186,7 +1190,9 @@ export class HierarchyEditorDemoViewModel extends BaseViewModel {
       onContentChange: () => {
         this.view.updateStatus('format', 'Content loaded');
       },
-      onMount: (instance) => {
+      onMount: (event) => {
+        console.log('Format editor onMount called with:', event);
+        const instance = event.instance || event;
         this.model.registerEditor('format', instance);
       },
       onDestroy: () => {
@@ -1239,7 +1245,8 @@ export class HierarchyEditorDemoViewModel extends BaseViewModel {
       onNodeRemove: (e) => {
         this.view.updateStatus('edit', `Removed ${e.path}`);
       },
-      onMount: (instance) => {
+      onMount: (event) => {
+        const instance = event.instance || event;
         this.model.registerEditor('edit', instance);
         this.updateEditNodeCount();
         this.view.updateStatus('edit', 'Sample data loaded - Double-click to edit values');
@@ -1265,7 +1272,8 @@ export class HierarchyEditorDemoViewModel extends BaseViewModel {
       content: '{"name": "John", "age": 30, "skills": ["JavaScript", "Python"]}',
       format: 'json',
       showToolbar: true,
-      onMount: (instance) => {
+      onMount: (event) => {
+        const instance = event.instance || event;
         this.model.registerEditor('event', instance);
         logEvent('mount', { format: 'json', mode: 'tree' });
       },
@@ -1309,7 +1317,8 @@ export class HierarchyEditorDemoViewModel extends BaseViewModel {
       onValidationError: (e) => {
         this.view.updateStatus('advanced', `Validation error: ${e.error}`);
       },
-      onMount: (instance) => {
+      onMount: (event) => {
+        const instance = event.instance || event;
         this.model.registerEditor('advanced', instance);
       },
       onDestroy: () => {
@@ -1481,10 +1490,23 @@ export class HierarchyEditorDemoViewModel extends BaseViewModel {
   
   loadSampleData(format) {
     const editor = this.model.getEditor('format');
-    if (!editor) return;
+    if (!editor) {
+      console.error('No format editor found');
+      return;
+    }
+    
+    console.log('Loading sample data for format:', format);
+    console.log('Editor instance:', editor);
+    console.log('Editor methods:', Object.keys(editor));
     
     const sampleData = this.model.getSampleData(format);
-    editor.loadContent(sampleData, format);
+    if (editor.loadContent) {
+      editor.loadContent(sampleData, format);
+    } else if (editor.setContent) {
+      editor.setContent(sampleData);
+    } else {
+      console.error('Editor has no loadContent or setContent method');
+    }
     this.view.highlightFormatCard(format);
   }
   

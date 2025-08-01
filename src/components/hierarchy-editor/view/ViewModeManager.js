@@ -273,6 +273,14 @@ export class ViewModeManager {
   /**
    * Set source content
    */
+  setContent(content) {
+    this.config.content = content;
+    this.state.sourceContent = content;
+    if (this.currentView && this.currentView.setContent) {
+      this.currentView.setContent(content);
+    }
+  }
+  
   setSourceContent(content) {
     this.state.sourceContent = content;
     if (this.currentView && this.currentView.setContent) {

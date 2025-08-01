@@ -1,14 +1,16 @@
 /**
  * Markdown Handler - Parse and serialize Markdown to/from HierarchyNode format
  */
-import { FormatHandler } from './FormatHandler.js';
+import { BaseFormatHandler } from './BaseFormatHandler.js';
+import { HierarchyNode } from '../model/HierarchyNode.js';
 
-export class MarkdownHandler extends FormatHandler {
-  constructor() {
-    super();
-    this.format = 'markdown';
-    this.mimeType = 'text/markdown';
-    this.fileExtensions = ['.md', '.markdown'];
+export class MarkdownHandler extends BaseFormatHandler {
+  static format = 'markdown';
+  
+  constructor(config = {}) {
+    super(config);
+    this.indentSize = config.indentSize || 2;
+    this.indentChar = ' ';
   }
 
   /**
@@ -500,6 +502,21 @@ export class MarkdownHandler extends FormatHandler {
       }
     }
     
-    return markdownFeatures >= 3;
+    return markdownFeatures >= 1;
+  }
+
+  /**
+   * Get editable fields configuration
+   */
+  getEditableFields() {
+    return {
+      keyEditable: false,     // Markdown structure is implicit
+      valueEditable: true,    // Can edit text content
+      typeChangeable: false,  // Node types are determined by syntax
+      structureEditable: true // Can add/remove/move nodes
+    };
   }
 }
+
+// Register the handler
+BaseFormatHandler.register('markdown', MarkdownHandler);

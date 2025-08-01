@@ -1,16 +1,15 @@
 /**
  * JsonHandler - JSON format parser and serializer
  */
-import { FormatHandler } from './FormatHandler.js';
+import { BaseFormatHandler } from './BaseFormatHandler.js';
 import { HierarchyNode } from '../model/HierarchyNode.js';
 
-export class JsonHandler extends FormatHandler {
-  constructor() {
-    super('json', {
-      name: 'JSON',
-      extensions: ['.json'],
-      mimeTypes: ['application/json', 'text/json']
-    });
+export class JsonHandler extends BaseFormatHandler {
+  static format = 'json';
+
+  constructor(config = {}) {
+    super(config);
+    this.indentSize = config.indentSize || 2;
   }
 
   /**
@@ -211,4 +210,19 @@ export class JsonHandler extends FormatHandler {
 
     throw new Error(`Unknown node type: ${node.type}`);
   }
+
+  /**
+   * Get editable fields configuration
+   */
+  getEditableFields() {
+    return {
+      keyEditable: true,      // Object keys can be edited
+      valueEditable: true,    // Values can be edited
+      typeChangeable: true,   // Can change value types (string to number, etc.)
+      structureEditable: true // Can add/remove properties
+    };
+  }
 }
+
+// Register the handler
+BaseFormatHandler.register('json', JsonHandler);

@@ -2,30 +2,23 @@
  * FormatHandlerFactory - Factory for creating format handlers
  */
 
-import { JsonHandler } from './JsonHandler.js';
-import { XmlHandler } from './XmlHandler.js';
-import { YamlHandler } from './YamlHandler.js';
-import { MarkdownHandler } from './MarkdownHandler.js';
+import { BaseFormatHandler } from './BaseFormatHandler.js';
+
+// Import handlers to ensure they register themselves
+import './JsonHandler.js';
+import './XmlHandler.js';
+import './YamlHandler.js';
+import './MarkdownHandler.js';
 
 export class FormatHandlerFactory {
-  static handlers = {
-    json: JsonHandler,
-    xml: XmlHandler,
-    yaml: YamlHandler,
-    markdown: MarkdownHandler
-  };
   
   /**
    * Create a handler for the specified format
    * @param {string} format - Format type
-   * @returns {FormatHandler} Handler instance
+   * @returns {BaseFormatHandler} Handler instance
    */
   static create(format) {
-    const HandlerClass = this.handlers[format];
-    if (!HandlerClass) {
-      throw new Error(`Unsupported format: ${format}`);
-    }
-    return new HandlerClass();
+    return BaseFormatHandler.getHandler(format);
   }
   
   /**
@@ -33,7 +26,7 @@ export class FormatHandlerFactory {
    * @returns {string[]} Array of supported format names
    */
   static getSupportedFormats() {
-    return Object.keys(this.handlers);
+    return BaseFormatHandler.getFormats();
   }
   
   /**
@@ -42,7 +35,7 @@ export class FormatHandlerFactory {
    * @returns {boolean} True if supported
    */
   static isSupported(format) {
-    return format in this.handlers;
+    return BaseFormatHandler.getFormats().includes(format.toLowerCase());
   }
   
   /**
@@ -51,6 +44,6 @@ export class FormatHandlerFactory {
    * @param {class} HandlerClass - Handler class
    */
   static registerHandler(format, HandlerClass) {
-    this.handlers[format] = HandlerClass;
+    BaseFormatHandler.register(format, HandlerClass);
   }
 }

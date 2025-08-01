@@ -1,14 +1,16 @@
 /**
  * YAML Handler - Parse and serialize YAML to/from HierarchyNode format
  */
-import { FormatHandler } from './FormatHandler.js';
+import { BaseFormatHandler } from './BaseFormatHandler.js';
+import { HierarchyNode } from '../model/HierarchyNode.js';
 
-export class YamlHandler extends FormatHandler {
-  constructor() {
-    super();
-    this.format = 'yaml';
-    this.mimeType = 'application/x-yaml';
-    this.fileExtensions = ['.yaml', '.yml'];
+export class YamlHandler extends BaseFormatHandler {
+  static format = 'yaml';
+  
+  constructor(config = {}) {
+    super(config);
+    this.indentSize = config.indentSize || 2;
+    this.indentChar = ' ';
   }
 
   /**
@@ -763,6 +765,21 @@ export class YamlHandler extends FormatHandler {
       }
     }
     
-    return yamlFeatures >= 2;
+    return yamlFeatures >= 1;
+  }
+
+  /**
+   * Get editable fields configuration
+   */
+  getEditableFields() {
+    return {
+      keyEditable: true,
+      valueEditable: true,
+      typeChangeable: true,
+      structureEditable: true
+    };
   }
 }
+
+// Register the handler
+BaseFormatHandler.register('yaml', YamlHandler);

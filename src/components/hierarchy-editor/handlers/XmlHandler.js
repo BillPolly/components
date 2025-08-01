@@ -1,14 +1,16 @@
 /**
  * XML Handler - Parse and serialize XML to/from HierarchyNode format
  */
-import { FormatHandler } from './FormatHandler.js';
+import { BaseFormatHandler } from './BaseFormatHandler.js';
+import { HierarchyNode } from '../model/HierarchyNode.js';
 
-export class XmlHandler extends FormatHandler {
-  constructor() {
-    super();
-    this.format = 'xml';
-    this.mimeType = 'application/xml';
-    this.fileExtensions = ['.xml'];
+export class XmlHandler extends BaseFormatHandler {
+  static format = 'xml';
+  
+  constructor(config = {}) {
+    super(config);
+    this.indentSize = config.indentSize || 2;
+    this.indentChar = ' ';
   }
 
   /**
@@ -216,6 +218,26 @@ export class XmlHandler extends FormatHandler {
         case 'processingInstruction':
           return `<?${node.name}${node.value ? ' ' + node.value : ''}?>`;
           
+        case 'object':
+          // Handle generic object nodes (from other format conversions)
+          return this.serializeElement({
+            ...node,
+            type: 'element',
+            name: node.name || 'object'
+          }, depth, indent, compact, visited);
+          
+        case 'array':
+          // Handle generic array nodes (from other format conversions)
+          return this.serializeElement({
+            ...node,
+            type: 'element',
+            name: node.name || 'array'
+          }, depth, indent, compact, visited);
+          
+        case 'value':
+          // Handle generic value nodes
+          return this.escapeXmlText(node.value || '');
+          
         default:
           throw new Error(`Unknown node type: ${node.type}`);
       }
@@ -255,7 +277,12 @@ export class XmlHandler extends FormatHandler {
     
     // Handle self-closing elements
     if (!node.children || node.children.length === 0) {
-      xml += ' />';
+      // Special case for value nodes converted to elements
+      if (node.value !== null && node.value !== undefined) {
+        xml += `>${this.escapeXmlText(node.value)}</${node.name}>`;
+      } else {
+        xml += ' />';
+      }
       return xml;
     }
     
@@ -432,4 +459,19 @@ export class XmlHandler extends FormatHandler {
     
     return false;
   }
+
+  /**
+   * Get editable fields configuration
+   */
+  getEditableFields() {
+    return {
+      keyEditable: true,      // Element names can be edited
+      valueEditable: true,    // Text content can be edited
+      typeChangeable: false,  // Can't change node types in XML
+      structureEditable: true // Can add/remove elements
+    };
+  }
 }
+
+// Register the handler
+BaseFormatHandler.register('xml', XmlHandler);
