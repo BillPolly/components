@@ -367,6 +367,29 @@ docs/                   # Protocol design documentation
 
 **Location**: Always update `src/components/[component-name]/docs/development-plan.md`
 
+## Development Plan Progress Tracking
+
+**CRITICAL REQUIREMENT**: When working on components with development plans (like HierarchyEditor), you MUST update the development plan progress:
+
+1. **Mark completed steps with ✅**: When any phase step is finished, update the corresponding checkbox with a GREEN TICK (✅)
+2. **Update progress percentages**: Recalculate and update the phase progress percentage when steps complete
+3. **Update total progress**: Recalculate and update the total progress percentage at the bottom
+4. **Update phase status**: Mark phases as completed when all their steps are done
+
+**Example Progress Updates**:
+```markdown
+#### 1.1 Project Setup & Basic Structure
+- [✅] Create test framework setup with Jest ES6 module support
+- [✅] Set up test utilities and mock helpers
+- [ ] Create basic directory structure
+- [ ] Configure umbilical protocol test suite
+
+**Phase 1 Progress**: ⬜ 2/16 steps complete (12.5%)
+**Total Progress**: ⬜ 2/134 steps complete (1.5%)
+```
+
+**Location**: Always update `src/components/[component-name]/docs/development-plan.md`
+
 ## Important Notes
 
 - All components use ES6 modules - ensure proper import/export syntax
