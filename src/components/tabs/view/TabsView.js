@@ -165,9 +165,9 @@ export class TabsView {
   _getTabBorder(colors) {
     switch (this.config.variant) {
       case 'pills':
-        return `1px solid ${colors.border}`;
+        return `0.0625rem solid ${colors.border}`;
       case 'cards':
-        return `1px solid ${colors.border}`;
+        return `0.0625rem solid ${colors.border}`;
       case 'underline':
         return 'none';
       default:
@@ -181,13 +181,13 @@ export class TabsView {
   _getTabBorderRadius() {
     switch (this.config.variant) {
       case 'pills':
-        return '20px';
+        return '1.25rem';
       case 'cards':
-        return '8px 8px 0 0';
+        return '0.5rem 0.5rem 0 0';
       case 'underline':
         return '0';
       default:
-        return '4px 4px 0 0';
+        return '0.25rem 0.25rem 0 0';
     }
   }
 
@@ -257,7 +257,7 @@ export class TabsView {
         width: 100%;
         height: 100%;
         background: ${colors.background};
-        border-radius: 8px;
+        border-radius: 0.5rem;
         overflow: hidden;
       }
 
@@ -265,10 +265,10 @@ export class TabsView {
         display: flex;
         align-items: center;
         background: ${colors.background};
-        border-bottom: ${this.config.position === 'top' ? `2px solid ${colors.border}` : 'none'};
-        border-top: ${this.config.position === 'bottom' ? `2px solid ${colors.border}` : 'none'};
-        border-right: ${this.config.position === 'left' ? `2px solid ${colors.border}` : 'none'};
-        border-left: ${this.config.position === 'right' ? `2px solid ${colors.border}` : 'none'};
+        border-bottom: ${this.config.position === 'top' ? `0.125rem solid ${colors.border}` : 'none'};
+        border-top: ${this.config.position === 'bottom' ? `0.125rem solid ${colors.border}` : 'none'};
+        border-right: ${this.config.position === 'left' ? `0.125rem solid ${colors.border}` : 'none'};
+        border-left: ${this.config.position === 'right' ? `0.125rem solid ${colors.border}` : 'none'};
         position: relative;
         flex-shrink: 0;
       }
@@ -281,11 +281,11 @@ export class TabsView {
 
       .umbilical-tabs-list {
         display: flex;
-        gap: ${this.config.variant === 'pills' ? '8px' : this.config.variant === 'underline' ? '0' : '2px'};
-        padding: ${this.config.variant === 'pills' ? '8px' : this.config.variant === 'cards' ? '8px 8px 0 8px' : '0'};
+        gap: ${this.config.variant === 'pills' ? '0.5rem' : this.config.variant === 'underline' ? '0' : '0.125rem'};
+        padding: ${this.config.variant === 'pills' ? '0.5rem' : this.config.variant === 'cards' ? '0.5rem 0.5rem 0 0.5rem' : '0'};
         transition: transform ${this.config.animationDuration}ms ease;
         align-items: stretch;
-        ${this.config.variant === 'underline' ? `border-bottom: 2px solid ${colors.border};` : ''}
+        ${this.config.variant === 'underline' ? `border-bottom: 0.125rem solid ${colors.border};` : ''}
       }
 
       .umbilical-tabs[data-position="left"] .umbilical-tabs-list,
@@ -296,8 +296,8 @@ export class TabsView {
       .umbilical-tab {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: ${this.config.variant === 'pills' ? '10px 18px' : this.config.variant === 'cards' ? '14px 18px' : '12px 16px'};
+        gap: 0.5rem;
+        padding: ${this.config.variant === 'pills' ? '0.625rem 1.125rem' : this.config.variant === 'cards' ? '0.875rem 1.125rem' : '0.75rem 1rem'};
         cursor: pointer;
         user-select: none;
         position: relative;
@@ -307,10 +307,10 @@ export class TabsView {
         background: ${this._getTabBackground(colors)};
         border: ${this._getTabBorder(colors)};
         border-radius: ${this._getTabBorderRadius()};
-        min-width: ${this.config.variant === 'pills' ? '80px' : '100px'};
+        min-width: ${this.config.variant === 'pills' ? '5rem' : '6.25rem'};
         flex-shrink: 0;
-        ${this.config.variant === 'cards' ? `margin-bottom: -2px; border-bottom: 2px solid ${colors.border};` : ''}
-        ${this.config.variant === 'underline' ? `margin-bottom: -2px; border-bottom: 2px solid transparent;` : ''}
+        ${this.config.variant === 'cards' ? `margin-bottom: -0.125rem; border-bottom: 0.125rem solid ${colors.border};` : ''}
+        ${this.config.variant === 'underline' ? `margin-bottom: -0.125rem; border-bottom: 0.125rem solid transparent;` : ''}
       }
 
       .umbilical-tab:hover {
@@ -353,7 +353,7 @@ export class TabsView {
 
       .umbilical-tabs[data-variant="cards"] .umbilical-tabs-container {
         background: ${colors.tabBackground};
-        border-bottom: 2px solid ${colors.border};
+        border-bottom: 0.125rem solid ${colors.border};
       }
 
       .umbilical-tabs[data-variant="underline"] .umbilical-tabs-container {
@@ -362,25 +362,25 @@ export class TabsView {
       }
       
       .umbilical-tabs[data-variant="underline"] .umbilical-tabs-list {
-        border-bottom: 2px solid ${colors.border};
+        border-bottom: 0.125rem solid ${colors.border};
       }
 
       /* Pills variant - fully rounded, spaced tabs */
       .umbilical-tabs[data-variant="pills"] .umbilical-tab {
-        border-radius: 20px;
-        margin: 0 2px;
+        border-radius: 1.25rem;
+        margin: 0 0.125rem;
       }
 
       /* Cards variant - connected tabs with borders */
       .umbilical-tabs[data-variant="cards"] .umbilical-tab {
-        border-radius: 8px 8px 0 0;
+        border-radius: 0.5rem 0.5rem 0 0;
         border-bottom: none;
-        margin-right: 1px;
+        margin-right: 0.0625rem;
       }
 
       .umbilical-tabs[data-variant="cards"] .umbilical-tab.active {
-        border-bottom: 2px solid ${colors.background};
-        margin-bottom: -2px;
+        border-bottom: 0.125rem solid ${colors.background};
+        margin-bottom: -0.125rem;
       }
 
       /* Underline variant - minimal tabs with bottom border indicator */
@@ -388,8 +388,8 @@ export class TabsView {
         border: none;
         border-radius: 0;
         background: transparent;
-        border-bottom: 3px solid transparent;
-        margin-bottom: -2px;
+        border-bottom: 0.1875rem solid transparent;
+        margin-bottom: -0.125rem;
       }
 
       .umbilical-tabs[data-variant="underline"] .umbilical-tab:hover {
@@ -406,8 +406,8 @@ export class TabsView {
 
       .umbilical-tab-icon {
         flex-shrink: 0;
-        width: 16px;
-        height: 16px;
+        width: 1rem;
+        height: 1rem;
       }
 
       .umbilical-tab-title {
@@ -419,11 +419,11 @@ export class TabsView {
       .umbilical-tab-badge {
         background: #ef4444;
         color: white;
-        border-radius: 10px;
-        padding: 2px 6px;
-        font-size: 11px;
+        border-radius: 0.625rem;
+        padding: 0.125rem 0.375rem;
+        font-size: 0.6875rem;
         font-weight: 600;
-        min-width: 16px;
+        min-width: 1rem;
         text-align: center;
       }
 
@@ -432,16 +432,16 @@ export class TabsView {
         border: none;
         color: currentColor;
         cursor: pointer;
-        padding: 2px;
-        border-radius: 3px;
+        padding: 0.125rem;
+        border-radius: 0.1875rem;
         opacity: 0.7;
         transition: all 0.2s ease;
-        width: 16px;
-        height: 16px;
+        width: 1rem;
+        height: 1rem;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 12px;
+        font-size: 0.75rem;
         line-height: 1;
       }
 
@@ -454,18 +454,18 @@ export class TabsView {
         background: ${colors.scrollButton};
         color: white;
         border: none;
-        padding: 8px;
+        padding: 0.5rem;
         cursor: pointer;
         transition: opacity 0.3s ease;
-        font-size: 18px;
+        font-size: 1.125rem;
         line-height: 1;
-        width: 36px;
-        height: 36px;
+        width: 2.25rem;
+        height: 2.25rem;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 4px;
-        margin: 4px;
+        border-radius: 0.25rem;
+        margin: 0.25rem;
       }
 
       .umbilical-tabs-scroll:hover {
@@ -481,12 +481,12 @@ export class TabsView {
         background: ${colors.addButton};
         color: white;
         border: none;
-        padding: 8px 12px;
+        padding: 0.5rem 0.75rem;
         cursor: pointer;
-        border-radius: 6px;
-        margin: 4px;
+        border-radius: 0.375rem;
+        margin: 0.25rem;
         transition: all 0.2s ease;
-        font-size: 14px;
+        font-size: 0.875rem;
         font-weight: 600;
         display: flex;
         align-items: center;
@@ -501,7 +501,7 @@ export class TabsView {
       .umbilical-tabs-content {
         flex: 1;
         overflow: auto;
-        padding: 16px;
+        padding: 0;
         background: ${colors.background};
       }
 
@@ -515,12 +515,12 @@ export class TabsView {
       }
 
       @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
+        from { opacity: 0; transform: translateY(0.625rem); }
         to { opacity: 1; transform: translateY(0); }
       }
 
       @keyframes slideIn {
-        from { transform: translateX(20px); opacity: 0; }
+        from { transform: translateX(1.25rem); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
       }
 
@@ -531,12 +531,12 @@ export class TabsView {
       /* Responsive design */
       @media (max-width: 768px) {
         .umbilical-tab {
-          min-width: 80px;
-          padding: 10px 12px;
+          min-width: 5rem;
+          padding: 0.625rem 0.75rem;
         }
         
         .umbilical-tab-title {
-          font-size: 14px;
+          font-size: 0.875rem;
         }
       }
     `;
@@ -552,7 +552,7 @@ export class TabsView {
 
     // Scroll functions
     const scrollTabs = (direction) => {
-      const scrollAmount = 200;
+      const scrollAmount = tabsScroller.clientWidth * 0.8;
       const currentScroll = tabsScroller.scrollLeft;
       const newScroll = direction === 'left' 
         ? Math.max(0, currentScroll - scrollAmount)
@@ -844,13 +844,13 @@ export class TabsView {
     if (tabRect.left < scrollerRect.left) {
       // Tab is to the left of visible area
       tabsScroller.scrollTo({
-        left: tabsScroller.scrollLeft - (scrollerRect.left - tabRect.left) - 20,
+        left: tabsScroller.scrollLeft - (scrollerRect.left - tabRect.left) - (tabsScroller.clientWidth * 0.05),
         behavior: 'smooth'
       });
     } else if (tabRect.right > scrollerRect.right) {
       // Tab is to the right of visible area
       tabsScroller.scrollTo({
-        left: tabsScroller.scrollLeft + (tabRect.right - scrollerRect.right) + 20,
+        left: tabsScroller.scrollLeft + (tabRect.right - scrollerRect.right) + (tabsScroller.clientWidth * 0.05),
         behavior: 'smooth'
       });
     }
